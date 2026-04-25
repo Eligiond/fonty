@@ -1,0 +1,152 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
+
+  /* Default fallback (Cream light); overridden by inline style on <main> */
+  --bg: #fafaf7;
+  --surface: #f4f1ea;
+  --surface-muted: #ebe8df;
+  --border: #e5e2d8;
+  --text: #1a1a18;
+  --text-muted: #6b6856;
+  --stripe-1: #fafaf7;
+  --stripe-2: #f1efe8;
+  --stripe-3: #e7e3d7;
+  --accent: #1a1a18;
+  --accent-text: #fafaf7;
+}
+
+html,
+body {
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button,
+[role="button"] {
+  transition: transform 160ms var(--ease-out);
+}
+button:active:not(:disabled),
+[role="button"]:active {
+  transform: scale(0.97);
+}
+
+/* Pop animation for popovers / settings */
+@keyframes fonty-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+/* Confirmation pulse for "Saved" / "Copied" states */
+@keyframes fonty-pulse-keyframes {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.05); }
+  100% { transform: scale(1); }
+}
+.fonty-pulse {
+  animation: fonty-pulse-keyframes 280ms var(--ease-out);
+}
+
+/* Range slider styling */
+.fonty-range {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 4px;
+  background: var(--surface-muted);
+  border-radius: 999px;
+  outline: none;
+  cursor: pointer;
+}
+.fonty-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  background: var(--accent);
+  border-radius: 50%;
+  cursor: grab;
+  border: 2px solid var(--surface);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
+  transition: transform 120ms var(--ease-out);
+}
+.fonty-range::-webkit-slider-thumb:hover {
+  transform: scale(1.18);
+}
+.fonty-range::-webkit-slider-thumb:active {
+  transform: scale(1.05);
+  cursor: grabbing;
+}
+.fonty-range::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  background: var(--accent);
+  border: 2px solid var(--surface);
+  border-radius: 50%;
+  cursor: grab;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
+  transition: transform 120ms var(--ease-out);
+}
+.fonty-range:focus-visible::-webkit-slider-thumb {
+  box-shadow: 0 0 0 3px var(--surface), 0 0 0 4px var(--accent);
+}
+
+/* Cursor pointer for faux-interactive elements in mockup */
+.faux-link {
+  cursor: pointer;
+}
+
+/* Lock button pop on toggle */
+@keyframes fonty-lock-pop-keyframes {
+  0%   { transform: scale(1); }
+  30%  { transform: scale(1.25); }
+  60%  { transform: scale(0.88); }
+  100% { transform: scale(1); }
+}
+.fonty-lock-pop {
+  animation: fonty-lock-pop-keyframes 260ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+/* Settings full-screen slide in from right */
+@keyframes fonty-slide-right {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Settings backdrop fade */
+@keyframes fonty-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
