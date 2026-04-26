@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   FONT_PAIRINGS,
   pickRandomPairing,
@@ -8,11 +8,14 @@ import {
   type FontRole,
 } from "@/lib/fonts";
 import { THEMES, getTheme, paletteToCssVars, type ThemeId } from "@/lib/themes";
-import Sidebar, { type SavedItem } from "@/components/Sidebar";
+import Sidebar, { SIDEBAR_DEFAULT, SIDEBAR_MIN, SIDEBAR_MAX, type SavedItem } from "@/components/Sidebar";
 import TopBar, { type Tab, type ViewMode } from "@/components/TopBar";
 import GenerateView, { type Texts } from "@/components/GenerateView";
 import MockupView from "@/components/MockupView";
 import ControlsPanel, {
+  CONTROLS_DEFAULT,
+  CONTROLS_MIN,
+  CONTROLS_MAX,
   DEFAULT_ADJUSTMENTS,
   type Adjustments,
 } from "@/components/ControlsPanel";
@@ -23,34 +26,10 @@ type LockState = Record<FontRole, boolean>;
 const STORAGE_KEY = "fonty:saved";
 const PREFS_KEY = "fonty:prefs";
 
-const HEADING_SYNONYMS = [
-  "softly",
-  "subtly",
-  "intentionally",
-  "tenderly",
-  "quietly",
-  "gracefully",
-  "deliberately",
-  "thoughtfully",
-  "clearly",
-  "warmly",
-  "honestly",
-  "plainly",
-];
-
 const DEFAULT_TEXTS: Texts = {
-  heading: "The fastest way to ship beautifully typeset products.",
-  subheading: "Northwind gives design teams a shared system for typography, color, and motion - so every screen looks intentional.",
+  heading: "Find font pairings that give your product character.",
+  subheading: "Fonty provides design teams with an intentional system for typography and pairing, ensuring every product interface speaks with clarity and soul.",
   body: "Typography is intentional because it's not about product, but rather about the UX/UI experience, of which 50% is just typeset. Fonty keeps your visual language consistent from the marketing site to the production app. Set your tokens once and every team - engineering, design, content - pulls from the same source of truth.",
-};
-
-const pickNextWordIndex = (current: number) => {
-  if (HEADING_SYNONYMS.length <= 1) return 0;
-  let next = current;
-  while (next === current) {
-    next = Math.floor(Math.random() * HEADING_SYNONYMS.length);
-  }
-  return next;
 };
 
 export default function Page() {
@@ -66,18 +45,19 @@ export default function Page() {
   const [activeSavedId, setActiveSavedId] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [justSaved, setJustSaved] = useState(false);
-  const [wordIndex, setWordIndex] = useState(0);
 
   const [texts, setTexts] = useState<Texts>(DEFAULT_TEXTS);
-  const [headingTouched, setHeadingTouched] = useState(false);
 
   const [adjustments, setAdjustments] = useState<Adjustments>(DEFAULT_ADJUSTMENTS);
 
   const [themeId, setThemeId] = useState<ThemeId>("stunning");
   const [isDark, setIsDark] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [controlsOpen, setControlsOpen] = useState(true);
+  const [controlsOpen, setControlsOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [sidebarWidth, setSidebarWidth] = useState(SIDEBAR_DEFAULT);
+  const [controlsWidth, setControlsWidth] = useState(CONTROLS_DEFAULT);
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   // Hydrate
   useEffect(() => {
@@ -92,6 +72,13 @@ export default function Page() {
         if (prefs.themeId) setThemeId(prefs.themeId);
         if (typeof prefs.isDark === "boolean") setIsDark(prefs.isDark);
         if (typeof prefs.sidebarOpen === "boolean") setSidebarOpen(prefs.sidebarOpen);
+        if (typeof prefs.controlsOpen === "boolean") setControlsOpen(prefs.controlsOpen);
+        if (typeof prefs.sidebarWidth === "number") {
+          setSidebarWidth(Math.max(SIDEBAR_MIN, Math.min(SIDEBAR_MAX, prefs.sidebarWidth)));
+        }
+        if (typeof prefs.controlsWidth === "number") {
+          setControlsWidth(Math.max(CONTROLS_MIN, Math.min(CONTROLS_MAX, prefs.controlsWidth)));
+        }
       }
     } catch {}
   }, []);
@@ -99,9 +86,12 @@ export default function Page() {
   // Persist preferences
   useEffect(() => {
     try {
-      localStorage.setItem(PREFS_KEY, JSON.stringify({ themeId, isDark, sidebarOpen }));
+      localStorage.setItem(
+        PREFS_KEY,
+        JSON.stringify({ themeId, isDark, sidebarOpen, controlsOpen, sidebarWidth, controlsWidth }),
+      );
     } catch {}
-  }, [themeId, isDark, sidebarOpen]);
+  }, [themeId, isDark, sidebarOpen, controlsOpen, sidebarWidth, controlsWidth]);
 
   const persistSaved = (next: SavedItem[]) => {
     setSaved(next);
@@ -121,18 +111,8 @@ export default function Page() {
         body: locks.body ? current.body : next.body,
       };
     });
-    setWordIndex((i) => {
-      const next = pickNextWordIndex(i);
-      if (!headingTouched) {
-        setTexts((t) => ({
-          ...t,
-          heading: `Design that speaks ${HEADING_SYNONYMS[next]}.`,
-        }));
-      }
-      return next;
-    });
     setActiveSavedId(null);
-  }, [locks, headingTouched]);
+  }, [locks]);
 
   // Spacebar listener
   useEffect(() => {
@@ -154,13 +134,39 @@ export default function Page() {
     return () => window.removeEventListener("keydown", onKey);
   }, [roll]);
 
+  // Cmd/Ctrl shortcuts: ⌘. toggles sidebar, ⌘K focuses search
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const cmd = e.metaKey || e.ctrlKey;
+      if (!cmd) return;
+
+      if (e.key === ".") {
+        e.preventDefault();
+        setSidebarOpen((v) => !v);
+        return;
+      }
+
+      if (e.key === "k" || e.key === "K") {
+        e.preventDefault();
+        if (!sidebarOpen) {
+          setSidebarOpen(true);
+          // Wait for the sidebar's width transition (300ms) before focusing
+          setTimeout(() => searchInputRef.current?.focus(), 320);
+        } else {
+          searchInputRef.current?.focus();
+        }
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [sidebarOpen]);
+
   const toggleLock = (role: FontRole) =>
     setLocks((l) => ({ ...l, [role]: !l[role] }));
 
   const onTextChange = (role: FontRole, value: string) => {
     const v = value.trim().length === 0 ? DEFAULT_TEXTS[role] : value;
     setTexts((t) => ({ ...t, [role]: v }));
-    if (role === "heading") setHeadingTouched(true);
   };
 
   const savePairing = () => {
@@ -184,6 +190,9 @@ export default function Page() {
   const renameSaved = (id: string, name: string) =>
     persistSaved(saved.map((s) => (s.id === id ? { ...s, name } : s)));
 
+  const setSavedColor = (id: string, color: string | null) =>
+    persistSaved(saved.map((s) => (s.id === id ? { ...s, color } : s)));
+
   const deleteSaved = (id: string) => {
     persistSaved(saved.filter((s) => s.id !== id));
     if (activeSavedId === id) setActiveSavedId(null);
@@ -193,6 +202,11 @@ export default function Page() {
     setPairing(item.snapshot);
     setActiveSavedId(item.id);
   };
+
+  const activeSavedColor = useMemo(() => {
+    if (!activeSavedId) return null;
+    return saved.find((s) => s.id === activeSavedId)?.color ?? null;
+  }, [activeSavedId, saved]);
 
   const tailwindConfig = useMemo(() => buildTailwindConfig(pairing), [pairing]);
   const copyConfig = async () => {
@@ -220,12 +234,16 @@ export default function Page() {
         onLoad={loadSaved}
         onRename={renameSaved}
         onDelete={deleteSaved}
+        onSetColor={setSavedColor}
         onNewRoll={roll}
         onOpenSettings={() => setSettingsOpen(true)}
         themeId={themeId}
         setThemeId={setThemeId}
         isDark={isDark}
         setIsDark={setIsDark}
+        width={sidebarWidth}
+        onWidthChange={setSidebarWidth}
+        searchInputRef={searchInputRef}
       />
       <div className="flex min-w-0 flex-1 flex-col">
         <TopBar
@@ -242,9 +260,9 @@ export default function Page() {
           onSidebarToggle={() => setSidebarOpen((v) => !v)}
           controlsOpen={controlsOpen}
           onControlsToggle={() => setControlsOpen((v) => !v)}
+          activeColor={activeSavedColor}
         />
-        <div className="flex min-h-0 flex-1">
-          <div className="relative min-w-0 flex-1">
+        <div className="flex min-h-0 flex-1 relative">
             {tab === "generate" ? (
               <GenerateView
                 pairing={pairing}
@@ -265,15 +283,16 @@ export default function Page() {
                 onToggleLock={toggleLock}
               />
             )}
-          </div>
-          <ControlsPanel 
-            values={adjustments} 
-            onChange={setAdjustments} 
-            open={controlsOpen}
-            onToggle={() => setControlsOpen((v) => !v)}
-          />
         </div>
       </div>
+      <ControlsPanel
+        values={adjustments}
+        onChange={setAdjustments}
+        open={controlsOpen}
+        onToggle={() => setControlsOpen((v) => !v)}
+        width={controlsWidth}
+        onWidthChange={setControlsWidth}
+      />
 
       {settingsOpen && (
         <SettingsPanel

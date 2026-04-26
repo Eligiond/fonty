@@ -1,16 +1,15 @@
 "use client";
 
 import {
-  Heart,
+  Bookmark,
   Copy,
   Check,
   Type,
   ScrollText,
   Rows3,
   Columns3,
-  PanelLeft,
-  SlidersHorizontal
 } from "lucide-react";
+import { getContrastText } from "@/lib/colors";
 
 export type Tab = "generate" | "scroll";
 export type ViewMode = "vertical" | "horizontal";
@@ -29,6 +28,7 @@ type Props = {
   onSidebarToggle: () => void;
   controlsOpen: boolean;
   onControlsToggle: () => void;
+  activeColor: string | null;
 };
 
 export default function TopBar({
@@ -36,26 +36,40 @@ export default function TopBar({
   setTab,
   viewMode,
   setViewMode,
-  vibe,
   onSave,
   justSaved,
   onCopy,
   copied,
-  sidebarOpen,
-  onSidebarToggle,
-  controlsOpen,
-  onControlsToggle,
+  activeColor,
 }: Props) {
   return (
     <div
-      className="flex h-12 items-center justify-between border-b px-3"
+      className="flex h-12 items-center justify-between px-6 relative border-b"
       style={{
         background: "var(--bg)",
         borderColor: "var(--border)",
         color: "var(--text)",
       }}
     >
-      <div className="flex items-center gap-2">
+      {/* Left Group - Save button (Bookmark) */}
+      <div className="flex-1 flex items-center justify-start">
+        <ActionButton onClick={onSave} variant="ghost" justActed={justSaved}>
+          {justSaved ? (
+            <>
+              <Check className="h-3.5 w-3.5" />
+              Saved
+            </>
+          ) : (
+            <>
+              <Bookmark className="h-3.5 w-3.5 transition-transform group-hover:scale-110" />
+              Save
+            </>
+          )}
+        </ActionButton>
+      </div>
+
+      {/* Center Group - Generate and Scroll perfectly centered */}
+      <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center gap-3">
         <SegmentedTabs>
           <Pill
             active={tab === "generate"}
@@ -87,22 +101,9 @@ export default function TopBar({
         )}
       </div>
 
-      <div className="flex items-center gap-2">
-        <ActionButton onClick={onSave} variant="ghost" justActed={justSaved}>
-          {justSaved ? (
-            <>
-              <Check className="h-3.5 w-3.5" />
-              Saved
-            </>
-          ) : (
-            <>
-              <Heart className="h-3.5 w-3.5 transition-transform group-hover:scale-110" />
-              Save
-            </>
-          )}
-        </ActionButton>
-
-        <ActionButton onClick={onCopy} variant="solid" justActed={copied}>
+      {/* Right Group - Copy Config moved here for symmetry */}
+      <div className="flex-1 flex items-center justify-end">
+        <ActionButton onClick={onCopy} variant="solid" justActed={copied} accentColor={activeColor}>
           {copied ? (
             <>
               <Check className="h-3.5 w-3.5" />
@@ -145,7 +146,11 @@ function Pill({
   return (
     <button
       onClick={onClick}
-      className={`inline-flex items-center gap-1.5 rounded-full ${label ? "px-3 py-1" : "p-1.5"} text-[13px] font-medium transition-colors`}
+      className={`inline-flex items-center gap-1.5 rounded-full ${label ? "px-4 py-1.5" : "p-2"} text-[13px] font-semibold transition-[background-color,color,box-shadow,transform] duration-150 ease-out active:scale-95 ${
+        active
+          ? ""
+          : "text-[color:var(--text-muted)] hover:text-[color:var(--text)] hover:bg-[color:var(--surface)]"
+      }`}
       style={
         active
           ? {
@@ -153,7 +158,7 @@ function Pill({
               color: "var(--text)",
               boxShadow: "0 1px 2px rgba(0,0,0,0.06), 0 0 0 1px var(--border)",
             }
-          : { color: "var(--text-muted)" }
+          : undefined
       }
     >
       {icon}
@@ -166,26 +171,30 @@ function ActionButton({
   onClick,
   variant,
   justActed,
+  accentColor,
   children,
 }: {
   onClick: () => void;
   variant: "ghost" | "solid";
   justActed: boolean;
+  accentColor?: string | null;
   children: React.ReactNode;
 }) {
   const isSolid = variant === "solid";
+  const solidBg = accentColor ?? "var(--accent)";
+  const solidText = accentColor ? getContrastText(accentColor) : "var(--accent-text)";
   return (
     <button
       onClick={onClick}
-      className={`group inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[13px] font-medium transition-[transform,box-shadow,background-color,color] duration-200 hover:-translate-y-px ${
+      className={`group inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-[13px] font-bold transition-[background-color,color,box-shadow,transform] duration-200 ease-[cubic-bezier(0.23,1,0.32,1)] hover:-translate-y-px active:scale-95 ${
         justActed ? "fonty-pulse" : ""
       }`}
       style={
         isSolid
           ? {
-              background: "var(--accent)",
-              color: "var(--accent-text)",
-              boxShadow: "0 1px 2px rgba(0,0,0,0.08), 0 0 0 1px var(--accent)",
+              background: solidBg,
+              color: solidText,
+              boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
             }
           : {
               background: "var(--bg)",
@@ -195,21 +204,16 @@ function ActionButton({
       }
       onMouseEnter={(e) => {
         if (isSolid) {
-          e.currentTarget.style.boxShadow =
-            "0 4px 12px rgba(0,0,0,0.12), 0 0 0 1px var(--accent)";
+          e.currentTarget.style.boxShadow = "0 6px 12px rgba(0,0,0,0.15)";
         } else {
           e.currentTarget.style.background = "var(--surface)";
-          e.currentTarget.style.boxShadow =
-            "0 2px 8px rgba(0,0,0,0.06), 0 0 0 1px var(--text)";
         }
       }}
       onMouseLeave={(e) => {
         if (isSolid) {
-          e.currentTarget.style.boxShadow =
-            "0 1px 2px rgba(0,0,0,0.08), 0 0 0 1px var(--accent)";
+          e.currentTarget.style.boxShadow = "0 2px 4px rgba(0,0,0,0.1)";
         } else {
           e.currentTarget.style.background = "var(--bg)";
-          e.currentTarget.style.boxShadow = "0 0 0 1px var(--border)";
         }
       }}
     >

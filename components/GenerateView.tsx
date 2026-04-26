@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Lock, Unlock } from "lucide-react";
+import { Lock, Unlock, Copy, Check } from "lucide-react";
 import { cssFamily, type FontPairing, type FontRole } from "@/lib/fonts";
 import EditableText from "@/components/EditableText";
 import type { Adjustments } from "@/components/ControlsPanel";
@@ -140,9 +140,9 @@ function Stripe({
         />
       </div>
 
-      {/* RIGHT: metadata + lock */}
-      <aside className="flex w-40 flex-shrink-0 items-center justify-end gap-2.5 text-right">
-        <div className="min-w-0">
+      {/* RIGHT: metadata + actions */}
+      <aside className="flex flex-shrink-0 items-center gap-3 text-right">
+        <div className="min-w-0 max-w-[140px]">
           <div
             className="text-[10px] uppercase tracking-[0.16em]"
             style={{ color: "var(--text-muted)" }}
@@ -156,7 +156,10 @@ function Stripe({
             {family}
           </div>
         </div>
-        <LockButton locked={locked} onToggle={onToggleLock} />
+        <div className="flex flex-shrink-0 items-center gap-1.5">
+          <CopyButton family={family} role={role} label={`${meta.tag} · ${meta.label}`} locked={locked} />
+          <LockButton locked={locked} onToggle={onToggleLock} />
+        </div>
       </aside>
     </section>
   );
@@ -189,14 +192,17 @@ function Column({
         borderColor: "var(--border)",
       }}
     >
-      <header className="flex items-start justify-between">
+      <header className="flex items-start justify-between gap-3">
         <div
           className="text-[10px] uppercase tracking-[0.16em]"
           style={{ color: "var(--text-muted)" }}
         >
           {meta.tag} · {meta.label}
         </div>
-        <LockButton locked={locked} onToggle={onToggleLock} />
+        <div className="flex flex-shrink-0 items-center gap-1.5">
+          <CopyButton family={family} role={role} label={`${meta.tag} · ${meta.label}`} locked={locked} />
+          <LockButton locked={locked} onToggle={onToggleLock} />
+        </div>
       </header>
 
       <div className="flex flex-1 items-center py-6">
@@ -227,34 +233,54 @@ function LockButton({
   locked: boolean;
   onToggle: () => void;
 }) {
-  const [animating, setAnimating] = useState(false);
+  return (
+    <button
+      onClick={onToggle}
+      aria-label={locked ? "Unlock font" : "Lock font"}
+      title={locked ? "Unlock font" : "Lock font"}
+      className={`flex-shrink-0 rounded-full p-1.5 transition-all hover:scale-110 active:scale-90 border ${
+        locked
+          ? "bg-[color:var(--accent)] text-[color:var(--accent-text)] border-[color:var(--accent)]"
+          : "bg-[color:var(--bg)] border-[color:var(--border)] text-[color:var(--text-muted)] hover:text-[color:var(--text)]"
+      }`}
+    >
+      {locked ? <Lock className="h-3.5 w-3.5" /> : <Unlock className="h-3.5 w-3.5" />}
+    </button>
+  );
+}
 
-  const handleClick = () => {
-    setAnimating(true);
-    onToggle();
+function CopyButton({
+  family,
+  role,
+  label,
+  locked,
+}: {
+  family: string;
+  role: FontRole;
+  label: string;
+  locked: boolean;
+}) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async () => {
+    try {
+      const config = `// font: ${label}\nfamily: '${family}',\nrole: '${role}',\nlocked: ${locked}`;
+      await navigator.clipboard.writeText(config);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {}
   };
 
   return (
     <button
-      onClick={handleClick}
-      onAnimationEnd={() => setAnimating(false)}
-      aria-label={locked ? "Unlock font" : "Lock font"}
-      className={`flex-shrink-0 rounded-full border p-1.5 transition-[background-color,color,border-color] duration-150 ${animating ? "fonty-lock-pop" : ""}`}
-      style={
-        locked
-          ? {
-              background: "var(--accent)",
-              color: "var(--accent-text)",
-              borderColor: "var(--accent)",
-            }
-          : {
-              background: "var(--bg)",
-              color: "var(--text-muted)",
-              borderColor: "var(--border)",
-            }
-      }
+      onClick={handleCopy}
+      aria-label="Copy font config"
+      title="Copy font config"
+      className={`flex-shrink-0 rounded-full p-1.5 transition-all hover:scale-110 active:scale-90 border bg-[color:var(--bg)] border-[color:var(--border)] ${
+        copied ? "text-[color:var(--text)]" : "text-[color:var(--text-muted)] hover:text-[color:var(--text)]"
+      }`}
     >
-      {locked ? <Lock className="h-3.5 w-3.5" /> : <Unlock className="h-3.5 w-3.5" />}
+      {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
     </button>
   );
 }

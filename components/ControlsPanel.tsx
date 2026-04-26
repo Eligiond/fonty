@@ -1,8 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { RotateCcw, Eye, EyeOff, SlidersHorizontal } from "lucide-react";
+import { RotateCcw, SlidersHorizontal } from "lucide-react";
 import type { FontRole } from "@/lib/fonts";
+
+export const CONTROLS_MIN = 220;
+export const CONTROLS_MAX = 360;
+export const CONTROLS_DEFAULT = 260;
 
 export type RoleAdjustment = {
   fontSize: number;      // px value
@@ -25,7 +29,7 @@ export const DEFAULT_ROLE: RoleAdjustment = { fontSize: 1, lineHeight: 1, letter
 
 export const DEFAULT_ADJUSTMENTS: Adjustments = {
   heading:    { fontSize: 52, lineHeight: 1, letterSpacing: 0 },
-  subheading: { fontSize: 22, lineHeight: 1, letterSpacing: 0 },
+  subheading: { fontSize: 20, lineHeight: 1, letterSpacing: 0 },
   body:       { fontSize: 14, lineHeight: 1, letterSpacing: 0 },
 };
 
@@ -36,15 +40,11 @@ type Props = {
   onChange: (next: Adjustments) => void;
 };
 
-export default function ControlsPanel({ values, onChange, open, onToggle }: Props & { open: boolean, onToggle: () => void }) {
-  const [pinnedRoles, setPinnedRoles] = useState<Record<FontRole, boolean>>({
-    heading: false,
-    subheading: false,
-    body: false,
-  });
-
+export default function ControlsPanel({ values, onChange, open, onToggle, width, onWidthChange }: Props & { open: boolean, onToggle: () => void, width: number, onWidthChange: (w: number) => void }) {
   const setRole = (role: FontRole, next: RoleAdjustment) =>
     onChange({ ...values, [role]: next });
+
+  const [resizing, setResizing] = useState(false);
 
   const isDefault = ROLES.every((r) => {
     const v = values[r];
@@ -52,61 +52,93 @@ export default function ControlsPanel({ values, onChange, open, onToggle }: Prop
     return v.fontSize === d.fontSize && v.lineHeight === d.lineHeight && v.letterSpacing === d.letterSpacing;
   });
 
-  const togglePin = (role: FontRole) =>
-    setPinnedRoles((p) => ({ ...p, [role]: !p[role] }));
+  const railWidth = 56;
+
+  const startResize = (e: React.MouseEvent) => {
+    e.preventDefault();
+    const startX = e.clientX;
+    const startW = width;
+    setResizing(true);
+    const onMove = (ev: MouseEvent) => {
+      const next = Math.max(CONTROLS_MIN, Math.min(CONTROLS_MAX, startW - (ev.clientX - startX)));
+      onWidthChange(next);
+    };
+    const onUp = () => {
+      setResizing(false);
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+    };
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+  };
 
   return (
     <aside
-      className="hidden flex-shrink-0 lg:flex flex-col overflow-hidden border-l transition-[width] duration-300 cubic-bezier(0.23, 1, 0.32, 1)"
-      style={{ 
-        width: open ? 220 : 48,
+      className={`relative hidden flex-shrink-0 lg:flex flex-col overflow-hidden border-l ${resizing ? "" : "transition-[width] duration-300 cubic-bezier(0.23, 1, 0.32, 1)"}`}
+      style={{
+        width: open ? width : railWidth,
         color: "var(--text)",
         background: "var(--surface)",
         borderColor: "var(--border)",
       }}
     >
-      <div className="flex h-full w-[220px] flex-col">
-        <header className={`flex items-center pt-4 pb-3 px-3 mb-2 ${open ? "justify-between" : "justify-center"}`}>
-          {open && <span className="text-[10px] font-bold uppercase tracking-[0.15em] text-muted opacity-40">Adjust</span>}
+      {open && (
+        <div
+          onMouseDown={startResize}
+          role="separator"
+          aria-label="Resize controls"
+          aria-orientation="vertical"
+          className="absolute left-0 top-0 z-10 h-full w-1.5 cursor-ew-resize select-none transition-colors hover:bg-[color:var(--accent)]"
+          style={{ background: resizing ? "var(--accent)" : "transparent" }}
+        />
+      )}
+      <div className="flex h-full w-full flex-col">
+        {/* Header - mirrored from Sidebar */}
+        <header className={`flex items-center h-12 px-4 border-b border-transparent ${open ? "justify-between" : "justify-center"}`}>
           <button
             onClick={onToggle}
             aria-label={open ? "Collapse controls" : "Expand controls"}
-            className="rounded-full p-1.5 transition-all duration-300 hover:bg-[color:var(--bg)]"
+            className="rounded-full p-2 transition-all duration-300 hover:bg-[color:var(--bg)] hover:scale-110 active:scale-95"
             style={{ color: "var(--text-muted)" }}
           >
             <SlidersHorizontal className="h-5 w-5" />
           </button>
+          {open && (
+            <span className="text-[13px] font-bold uppercase tracking-[0.15em] text-[color:var(--text)] mr-1">
+              Adjust
+            </span>
+          )}
         </header>
 
-        <div className={`flex flex-col px-5 pb-4 transition-all duration-200 ${open ? "opacity-100" : "opacity-0 pointer-events-none h-0 overflow-hidden"}`}>
-          <div className="flex items-center justify-between mb-2">
+        {/* Action Area (only when open) */}
+        <div className={`flex flex-col px-5 pb-6 pt-2 transition-all duration-200 ${open ? "opacity-100" : "opacity-0 pointer-events-none h-0 overflow-hidden"}`}>
+          <div className="flex items-center justify-between">
             <button
               onClick={() => onChange(DEFAULT_ADJUSTMENTS)}
               disabled={isDefault}
               aria-label="Reset adjustments"
-              className="inline-flex items-center gap-1.5 rounded-full px-4 py-1.5 text-[10px] uppercase tracking-widest transition-all hover:brightness-90 disabled:opacity-30"
+              className="group inline-flex w-full items-center justify-center gap-2 rounded-full py-2.5 text-[11px] font-bold uppercase tracking-widest transition-all hover:scale-[1.02] active:scale-95 disabled:opacity-30"
               style={{ 
-                color: "var(--text-muted)", 
-                background: "color-mix(in oklch, var(--surface-muted) 85%, black)" 
+                color: "var(--text)", 
+                background: "color-mix(in oklch, var(--surface-muted) 70%, black)",
+                boxShadow: "0 2px 4px rgba(0,0,0,0.05)"
               }}
             >
-              <RotateCcw className="h-3 w-3" />
+              <RotateCcw className="h-3.5 w-3.5 transition-transform group-hover:-rotate-180 duration-500" />
               Reset
             </button>
           </div>
         </div>
 
-        <div className={`flex flex-col gap-2 px-5 pb-10 transition-all duration-200 ${open ? "opacity-100 overflow-y-auto" : "opacity-0 pointer-events-none h-0 overflow-hidden"}`}>
+        {/* Sliders Area */}
+        <div className={`flex flex-col gap-8 px-5 pb-10 transition-all duration-200 ${open ? "opacity-100 overflow-y-auto" : "opacity-0 pointer-events-none h-0 overflow-hidden"}`}>
           {ROLES.map((role) => {
             const cfg = ROLE_CONFIG[role];
             const adj = values[role];
-            const pinned = pinnedRoles[role];
             return (
               <RoleGroup
                 key={role}
                 label={cfg.label}
-                pinned={pinned}
-                onTogglePin={() => togglePin(role)}
                 adj={adj}
                 sizeMin={cfg.sizeMin}
                 sizeMax={cfg.sizeMax}
@@ -123,8 +155,6 @@ export default function ControlsPanel({ values, onChange, open, onToggle }: Prop
 
 function RoleGroup({
   label,
-  pinned,
-  onTogglePin,
   adj,
   sizeMin,
   sizeMax,
@@ -132,8 +162,6 @@ function RoleGroup({
   onChange,
 }: {
   label: string;
-  pinned: boolean;
-  onTogglePin: () => void;
   adj: RoleAdjustment;
   sizeMin: number;
   sizeMax: number;
@@ -141,31 +169,20 @@ function RoleGroup({
   onChange: (next: RoleAdjustment) => void;
 }) {
   return (
-    <div
-      className="group py-2 transition-all duration-200"
-    >
-      <div className="mb-3 flex items-center justify-between">
-        <span className={`text-[10px] font-semibold uppercase tracking-[0.14em] transition-opacity duration-200 ${pinned ? "opacity-100" : "opacity-0 group-hover:opacity-40"}`} style={{ color: "var(--text-muted)" }}>
+    <div className="group py-2 flex flex-col gap-5">
+      <div className="flex items-center justify-between border-b pb-1" style={{ borderColor: "color-mix(in oklch, var(--border) 40%, transparent)" }}>
+        <span className="text-[12px] font-bold uppercase tracking-[0.14em]" style={{ color: "var(--text)" }}>
           {label}
         </span>
-        <button
-          onClick={onTogglePin}
-          aria-label={pinned ? "Hide values" : "Show values"}
-          className="rounded p-0.5 transition-all duration-200 hover:scale-110"
-          style={{ color: pinned ? "var(--text)" : "var(--text-muted)", opacity: pinned ? 1 : 0.4 }}
-        >
-          {pinned ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
-        </button>
       </div>
 
-      <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-5">
         <SliderRow
           label="Font size"
           value={adj.fontSize}
           min={sizeMin}
           max={sizeMax}
           step={sizeStep}
-          pinned={pinned}
           format={(v) => `${Math.round(v)}px`}
           parse={(s) => Math.max(sizeMin, Math.min(sizeMax, parseInt(s) || sizeMin))}
           onChange={(v) => onChange({ ...adj, fontSize: v })}
@@ -176,7 +193,6 @@ function RoleGroup({
           min={0.85}
           max={1.85}
           step={0.01}
-          pinned={pinned}
           format={(v) => v.toFixed(2)}
           parse={(s) => Math.max(0.85, Math.min(1.85, parseFloat(s) || 1))}
           onChange={(v) => onChange({ ...adj, lineHeight: v })}
@@ -187,7 +203,6 @@ function RoleGroup({
           min={-0.04}
           max={0.1}
           step={0.005}
-          pinned={pinned}
           format={(v) => `${v >= 0 ? "+" : ""}${(v * 1000).toFixed(0)}`}
           parse={(s) => Math.max(-0.04, Math.min(0.1, (parseFloat(s) || 0) / 1000))}
           onChange={(v) => onChange({ ...adj, letterSpacing: v })}
@@ -203,7 +218,6 @@ function SliderRow({
   min,
   max,
   step,
-  pinned,
   format,
   parse,
   onChange,
@@ -213,7 +227,6 @@ function SliderRow({
   min: number;
   max: number;
   step: number;
-  pinned: boolean;
   format: (v: number) => string;
   parse: (s: string) => number;
   onChange: (v: number) => void;
@@ -233,9 +246,9 @@ function SliderRow({
   };
 
   return (
-    <div className="flex flex-col gap-1.5">
-      <div className={`flex items-center justify-between transition-all duration-300 ${pinned ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-1 pointer-events-none"}`}>
-        <span className="text-[10px] font-medium" style={{ color: "var(--text-muted)" }}>
+    <div className="flex flex-col gap-2">
+      <div className="flex items-center justify-between">
+        <span className="text-[12px] font-medium opacity-60" style={{ color: "var(--text)" }}>
           {label}
         </span>
         <div>
@@ -249,7 +262,7 @@ function SliderRow({
                 if (e.key === "Enter") { e.preventDefault(); commit(); }
                 if (e.key === "Escape") setEditing(false);
               }}
-              className="w-12 rounded border px-1 py-0.5 text-center font-mono text-[10px] outline-none"
+              className="w-12 rounded border px-1 py-0.5 text-center font-mono text-[11px] outline-none"
               style={{
                 background: "var(--bg)",
                 borderColor: "var(--accent)",
@@ -259,8 +272,8 @@ function SliderRow({
           ) : (
             <button
               onClick={startEdit}
-              className="rounded px-1 py-0.5 font-mono text-[10px] tabular-nums transition-colors hover:bg-[color:var(--bg)]"
-              style={{ color: "var(--text-muted)" }}
+              className="rounded px-1.5 py-0.5 font-mono text-[11px] tabular-nums transition-colors hover:bg-[color:var(--bg)]"
+              style={{ color: "var(--text)" }}
             >
               {format(value)}
             </button>
