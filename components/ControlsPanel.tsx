@@ -36,8 +36,7 @@ type Props = {
   onChange: (next: Adjustments) => void;
 };
 
-export default function ControlsPanel({ values, onChange }: Props) {
-  const [open, setOpen] = useState(true);
+export default function ControlsPanel({ values, onChange, open, onToggle }: Props & { open: boolean, onToggle: () => void }) {
   const [pinnedRoles, setPinnedRoles] = useState<Record<FontRole, boolean>>({
     heading: false,
     subheading: false,
@@ -58,75 +57,64 @@ export default function ControlsPanel({ values, onChange }: Props) {
 
   return (
     <aside
-      className="hidden flex-shrink-0 flex-row lg:flex"
-      style={{ color: "var(--text)" }}
+      className="hidden flex-shrink-0 lg:flex flex-col overflow-hidden border-l transition-[width] duration-300 cubic-bezier(0.23, 1, 0.32, 1)"
+      style={{ 
+        width: open ? 220 : 48,
+        color: "var(--text)",
+        background: "var(--surface)",
+        borderColor: "var(--border)",
+      }}
     >
-      {/* Strip — always visible, acts as the toggle handle */}
-      <div
-        className="flex w-10 flex-shrink-0 flex-col items-center border-l pt-4"
-        style={{ background: "var(--surface)", borderColor: "var(--border)" }}
-      >
-        <button
-          onClick={() => setOpen((v) => !v)}
-          aria-label={open ? "Collapse controls" : "Expand controls"}
-          className="rounded-md p-1.5 transition-colors hover:bg-[color:var(--bg)]"
-          style={{ color: open ? "var(--text)" : "var(--text-muted)" }}
-        >
-          <SlidersHorizontal className="h-4 w-4" />
-        </button>
-      </div>
+      <div className="flex h-full w-[220px] flex-col">
+        <header className={`flex items-center pt-4 pb-3 px-3 mb-2 ${open ? "justify-between" : "justify-center"}`}>
+          {open && <span className="text-[10px] font-bold uppercase tracking-[0.15em] text-muted opacity-40">Adjust</span>}
+          <button
+            onClick={onToggle}
+            aria-label={open ? "Collapse controls" : "Expand controls"}
+            className="rounded-full p-1.5 transition-all duration-300 hover:bg-[color:var(--bg)]"
+            style={{ color: "var(--text-muted)" }}
+          >
+            <SlidersHorizontal className="h-5 w-5" />
+          </button>
+        </header>
 
-      {/* Collapsible content */}
-      <div
-        className="overflow-hidden"
-        style={{
-          width: open ? 184 : 0,
-          transition: "width 280ms cubic-bezier(0.23, 1, 0.32, 1)",
-        }}
-      >
-        <div
-          className="flex h-full w-[184px] flex-col overflow-y-auto border-l"
-          style={{ background: "var(--surface)", borderColor: "var(--border)" }}
-        >
-          <div className="flex items-center justify-between px-4 pb-3 pt-5">
-            <span
-              className="text-[10px] uppercase tracking-[0.18em]"
-              style={{ color: "var(--text-muted)" }}
-            >
-              Adjust
-            </span>
+        <div className={`flex flex-col px-5 pb-4 transition-all duration-200 ${open ? "opacity-100" : "opacity-0 pointer-events-none h-0 overflow-hidden"}`}>
+          <div className="flex items-center justify-between mb-2">
             <button
               onClick={() => onChange(DEFAULT_ADJUSTMENTS)}
               disabled={isDefault}
               aria-label="Reset adjustments"
-              className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] uppercase tracking-widest transition-opacity hover:opacity-100 disabled:opacity-30"
-              style={{ color: "var(--text-muted)" }}
+              className="inline-flex items-center gap-1.5 rounded-full px-4 py-1.5 text-[10px] uppercase tracking-widest transition-all hover:brightness-90 disabled:opacity-30"
+              style={{ 
+                color: "var(--text-muted)", 
+                background: "color-mix(in oklch, var(--surface-muted) 85%, black)" 
+              }}
             >
               <RotateCcw className="h-3 w-3" />
               Reset
             </button>
           </div>
+        </div>
 
-          <div className="flex flex-col gap-1 px-3 pb-5">
-            {ROLES.map((role) => {
-              const cfg = ROLE_CONFIG[role];
-              const adj = values[role];
-              const pinned = pinnedRoles[role];
-              return (
-                <RoleGroup
-                  key={role}
-                  label={cfg.label}
-                  pinned={pinned}
-                  onTogglePin={() => togglePin(role)}
-                  adj={adj}
-                  sizeMin={cfg.sizeMin}
-                  sizeMax={cfg.sizeMax}
-                  sizeStep={cfg.sizeStep}
-                  onChange={(next) => setRole(role, next)}
-                />
-              );
-            })}
-          </div>
+        <div className={`flex flex-col gap-2 px-5 pb-10 transition-all duration-200 ${open ? "opacity-100 overflow-y-auto" : "opacity-0 pointer-events-none h-0 overflow-hidden"}`}>
+          {ROLES.map((role) => {
+            const cfg = ROLE_CONFIG[role];
+            const adj = values[role];
+            const pinned = pinnedRoles[role];
+            return (
+              <RoleGroup
+                key={role}
+                label={cfg.label}
+                pinned={pinned}
+                onTogglePin={() => togglePin(role)}
+                adj={adj}
+                sizeMin={cfg.sizeMin}
+                sizeMax={cfg.sizeMax}
+                sizeStep={cfg.sizeStep}
+                onChange={(next) => setRole(role, next)}
+              />
+            );
+          })}
         </div>
       </div>
     </aside>
@@ -154,26 +142,25 @@ function RoleGroup({
 }) {
   return (
     <div
-      className="group rounded-lg px-3 py-3 transition-colors"
-      style={{ background: "var(--surface-muted)" }}
+      className="group py-2 transition-all duration-200"
     >
-      <div className="mb-2.5 flex items-center justify-between">
-        <span className="text-[10px] font-semibold uppercase tracking-[0.14em]" style={{ color: "var(--text-muted)" }}>
+      <div className="mb-3 flex items-center justify-between">
+        <span className={`text-[10px] font-semibold uppercase tracking-[0.14em] transition-opacity duration-200 ${pinned ? "opacity-100" : "opacity-0 group-hover:opacity-40"}`} style={{ color: "var(--text-muted)" }}>
           {label}
         </span>
         <button
           onClick={onTogglePin}
-          aria-label={pinned ? "Hide values" : "Pin values visible"}
-          className="rounded p-0.5 transition-opacity"
-          style={{ color: pinned ? "var(--text)" : "var(--text-muted)", opacity: pinned ? 1 : undefined }}
+          aria-label={pinned ? "Hide values" : "Show values"}
+          className="rounded p-0.5 transition-all duration-200 hover:scale-110"
+          style={{ color: pinned ? "var(--text)" : "var(--text-muted)", opacity: pinned ? 1 : 0.4 }}
         >
-          {pinned ? <Eye className="h-3 w-3" /> : <EyeOff className="h-3 w-3" />}
+          {pinned ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
         </button>
       </div>
 
-      <div className="flex flex-col gap-3">
+      <div className="flex flex-col gap-4">
         <SliderRow
-          label="Size"
+          label="Font size"
           value={adj.fontSize}
           min={sizeMin}
           max={sizeMax}
@@ -184,7 +171,7 @@ function RoleGroup({
           onChange={(v) => onChange({ ...adj, fontSize: v })}
         />
         <SliderRow
-          label="Line"
+          label="Line spacing"
           value={adj.lineHeight}
           min={0.85}
           max={1.85}
@@ -195,7 +182,7 @@ function RoleGroup({
           onChange={(v) => onChange({ ...adj, lineHeight: v })}
         />
         <SliderRow
-          label="Kern"
+          label="Letter spacing"
           value={adj.letterSpacing}
           min={-0.04}
           max={0.1}
@@ -246,14 +233,12 @@ function SliderRow({
   };
 
   return (
-    <div className="flex flex-col gap-1">
-      <div className="flex items-center justify-between">
+    <div className="flex flex-col gap-1.5">
+      <div className={`flex items-center justify-between transition-all duration-300 ${pinned ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-1 pointer-events-none"}`}>
         <span className="text-[10px] font-medium" style={{ color: "var(--text-muted)" }}>
           {label}
         </span>
-        <div
-          className={`transition-opacity duration-150 ${pinned ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`}
-        >
+        <div>
           {editing ? (
             <input
               autoFocus

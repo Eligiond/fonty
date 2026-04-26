@@ -2,12 +2,12 @@
 
 import { useEffect, useRef, useState } from "react";
 import {
-  Plus,
+  LayoutDashboard,
   Search,
   Pencil,
   Trash2,
   Github,
-  Linkedin,
+  Heart,
   Settings as SettingsIcon,
 } from "lucide-react";
 import type { FontPairing } from "@/lib/fonts";
@@ -21,6 +21,7 @@ export type SavedItem = {
 
 type Props = {
   open: boolean;
+  onToggle: () => void;
   saved: SavedItem[];
   activeId: string | null;
   onLoad: (item: SavedItem) => void;
@@ -36,12 +37,12 @@ type Props = {
 
 export default function Sidebar({
   open,
+  onToggle,
   saved,
   activeId,
   onLoad,
   onRename,
   onDelete,
-  onNewRoll,
   onOpenSettings,
 }: Props) {
   const [query, setQuery] = useState("");
@@ -57,47 +58,67 @@ export default function Sidebar({
     );
   });
 
+  // The TopBar is h-12 (48px). Sidebar collapsed width should be 48px to match.
+  const collapsedWidth = 48;
+
   return (
     <aside
-      className="flex h-full flex-shrink-0 flex-col overflow-hidden"
+      className="flex h-full flex-shrink-0 flex-col overflow-hidden border-r transition-[width] duration-300 cubic-bezier(0.23, 1, 0.32, 1)"
       style={{
-        width: open ? 256 : 0,
-        transition: "width 280ms cubic-bezier(0.23, 1, 0.32, 1)",
+        width: open ? 240 : collapsedWidth,
+        background: "var(--surface)",
+        borderColor: "var(--border)",
+        color: "var(--text)",
       }}
     >
-      {/* Inner fixed-width container so content doesn't compress during animation */}
-      <div
-        className="flex h-full w-64 flex-col border-r"
-        style={{
-          background: "var(--surface)",
-          borderColor: "var(--border)",
-          color: "var(--text)",
-        }}
-      >
-        <header className="flex items-center justify-between px-4 pb-3 pt-5">
-          <span className="text-lg font-semibold tracking-tight">Fonty</span>
+      <div className="flex h-full w-full flex-col">
+        {/* Header */}
+        <header className={`flex items-center pt-4 pb-3 px-3 mb-2 ${open ? "justify-between" : "justify-center"}`}>
+          {open && <span className="font-logo text-lg tracking-tight">Fonty</span>}
           <button
-            onClick={onNewRoll}
-            title="New roll (space)"
-            aria-label="New roll"
-            className="rounded-full p-1.5 transition-colors hover:bg-[color:var(--bg)]"
+            onClick={onToggle}
+            title={open ? "Collapse" : "Expand"}
+            className="rounded-full p-1.5 transition-all duration-300 hover:bg-[color:var(--bg)]"
             style={{ color: "var(--text-muted)" }}
           >
-            <Plus className="h-4 w-4" />
+            <LayoutDashboard className="h-5 w-5" />
           </button>
         </header>
 
-        <div className="px-3 pb-3">
+        {/* Action Rail (only when closed) - matching icon sizes exactly */}
+        {!open && (
+           <div className="flex flex-col items-center gap-6 mt-2">
+              <button
+                onClick={onToggle}
+                title="Search"
+                className="rounded-full p-2 transition-colors hover:bg-[color:var(--bg)]"
+                style={{ color: "var(--text-muted)" }}
+              >
+                <Search className="h-5 w-5" />
+              </button>
+              <button
+                onClick={onToggle}
+                title="Saved"
+                className="rounded-full p-2 transition-colors hover:bg-[color:var(--bg)]"
+                style={{ color: "var(--text-muted)" }}
+              >
+                <Heart className="h-5 w-5" />
+              </button>
+           </div>
+        )}
+
+        {/* Search Bar (only when open) */}
+        <div className={`px-4 pb-4 transition-all duration-200 ${open ? "opacity-100" : "opacity-0 pointer-events-none h-0 overflow-hidden"}`}>
           <div className="relative">
             <Search
-              className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2"
+              className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2"
               style={{ color: "var(--text-muted)" }}
             />
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search saved"
-              className="w-full rounded-md border py-1.5 pl-8 pr-2 text-xs outline-none transition-colors focus:border-[color:var(--accent)]"
+              placeholder="Search..."
+              className="w-full rounded-full border py-1.5 pl-9 pr-3 text-xs outline-none transition-colors focus:border-[color:var(--accent)]"
               style={{
                 background: "var(--bg)",
                 borderColor: "var(--border)",
@@ -107,97 +128,67 @@ export default function Sidebar({
           </div>
         </div>
 
-        <div className="flex items-center justify-between px-4 pb-1.5">
-          <span
-            className="text-[10px] uppercase tracking-[0.18em]"
-            style={{ color: "var(--text-muted)" }}
-          >
-            Saved
-          </span>
-          <span
-            className="text-[10px] tabular-nums"
-            style={{ color: "var(--text-muted)" }}
-          >
-            {saved.length}
-          </span>
-        </div>
-
+        {/* Content Area */}
         <div className="flex-1 overflow-y-auto px-2 pb-2">
-          {filtered.length === 0 ? (
-            <div
-              className="px-3 py-6 text-xs leading-relaxed"
-              style={{ color: "var(--text-muted)" }}
-            >
-              {saved.length === 0
-                ? "Hit Save on a pairing you like — it'll show up here."
-                : "No matches."}
-            </div>
-          ) : (
-            <ul className="flex flex-col gap-0.5">
-              {filtered.map((item) => (
-                <SavedRow
-                  key={item.id}
-                  item={item}
-                  active={item.id === activeId}
-                  onLoad={() => onLoad(item)}
-                  onRename={(name) => onRename(item.id, name)}
-                  onDelete={() => onDelete(item.id)}
-                />
-              ))}
-            </ul>
+          {open && (
+            <>
+              {filtered.length === 0 ? (
+                <div
+                  className="px-4 py-8 text-xs leading-relaxed"
+                  style={{ color: "var(--text-muted)" }}
+                >
+                  {saved.length === 0
+                    ? "Hit Save on a pairing you like."
+                    : "No matches."}
+                </div>
+              ) : (
+                <ul className="flex flex-col gap-0.5">
+                  {filtered.map((item) => (
+                    <SavedRow
+                      key={item.id}
+                      item={item}
+                      active={item.id === activeId}
+                      onLoad={() => onLoad(item)}
+                      onRename={(name) => onRename(item.id, name)}
+                      onDelete={() => onDelete(item.id)}
+                    />
+                  ))}
+                </ul>
+              )}
+            </>
           )}
         </div>
 
+        {/* Footer Area */}
         <div
-          className="border-t px-3 pb-3 pt-3"
-          style={{
-            background: "var(--surface-muted)",
-            borderColor: "var(--border)",
-          }}
+          className={`pb-6 pt-4 mt-auto flex flex-col items-center ${open ? "px-4 border-t" : "px-2"}`}
+          style={{ borderColor: "var(--border)" }}
         >
-          <div className="mb-2 flex items-center justify-between gap-2">
+          {open ? (
+            <div className="flex w-full items-center justify-between gap-2">
+              <button
+                onClick={onOpenSettings}
+                aria-label="Settings"
+                className="inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium transition-colors hover:bg-[color:var(--bg)]"
+                style={{ color: "var(--text-muted)" }}
+              >
+                <SettingsIcon className="h-4 w-4" />
+                Settings
+              </button>
+              <SocialLink href="https://github.com" label="GitHub">
+                <Github className="h-4 w-4" />
+              </SocialLink>
+            </div>
+          ) : (
             <button
               onClick={onOpenSettings}
               aria-label="Settings"
-              className="inline-flex items-center gap-1.5 rounded-md px-2 py-1.5 text-xs font-medium transition-colors hover:bg-[color:var(--bg)]"
+              className="rounded-full p-2 transition-colors hover:bg-[color:var(--bg)]"
               style={{ color: "var(--text-muted)" }}
             >
-              <SettingsIcon className="h-3.5 w-3.5" />
-              Settings
+              <SettingsIcon className="h-5 w-5" />
             </button>
-            <div className="flex items-center gap-0.5">
-              <SocialLink href="https://github.com" label="GitHub">
-                <Github className="h-3.5 w-3.5" />
-              </SocialLink>
-              <SocialLink href="https://www.linkedin.com" label="LinkedIn">
-                <Linkedin className="h-3.5 w-3.5" />
-              </SocialLink>
-              <SocialLink href="https://x.com" label="X (Twitter)">
-                <XLogo className="h-3 w-3" />
-              </SocialLink>
-            </div>
-          </div>
-
-          <button
-            onClick={onNewRoll}
-            className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-left transition-colors"
-            style={{
-              background: "var(--accent)",
-              color: "var(--accent-text)",
-            }}
-            aria-label="Roll a new pairing"
-          >
-            <kbd
-              className="inline-flex items-center justify-center rounded-md border px-2 py-1 font-mono text-[11px] uppercase tracking-[0.15em]"
-              style={{
-                borderColor: "color-mix(in oklch, var(--accent-text) 18%, transparent)",
-                background: "color-mix(in oklch, var(--accent-text) 10%, transparent)",
-              }}
-            >
-              Space
-            </kbd>
-            <span className="text-sm font-medium">to roll</span>
-          </button>
+          )}
         </div>
       </div>
     </aside>
@@ -219,24 +210,11 @@ function SocialLink({
       target="_blank"
       rel="noreferrer"
       aria-label={label}
-      className="rounded-md p-1.5 transition-colors hover:bg-[color:var(--bg)]"
+      className="rounded-full p-1.5 transition-colors hover:bg-[color:var(--bg)]"
       style={{ color: "var(--text-muted)" }}
     >
       {children}
     </a>
-  );
-}
-
-function XLogo({ className }: { className?: string }) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      aria-hidden="true"
-      fill="currentColor"
-      className={className}
-    >
-      <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
-    </svg>
   );
 }
 
@@ -279,30 +257,14 @@ function SavedRow({
     <li>
       <div
         role="button"
-        tabIndex={editing ? -1 : 0}
+        tabIndex={0}
         onClick={editing ? undefined : onLoad}
-        onKeyDown={(e) => {
-          if (!editing && e.key === "Enter") {
-            e.preventDefault();
-            onLoad();
-          }
-        }}
-        onDoubleClick={(e) => {
-          e.stopPropagation();
-          startEdit();
-        }}
-        className={`group relative flex items-center gap-2 rounded-md px-2 py-1.5 text-[13px] transition-colors ${editing ? "" : "cursor-pointer"}`}
+        className={`group relative flex items-center gap-3 rounded-full px-4 py-2 text-[13px] transition-all ${editing ? "" : "cursor-pointer"}`}
         style={
           active
             ? { background: "var(--accent)", color: "var(--accent-text)" }
             : {}
         }
-        onMouseEnter={(e) => {
-          if (!active) e.currentTarget.style.background = "var(--bg)";
-        }}
-        onMouseLeave={(e) => {
-          if (!active) e.currentTarget.style.background = "";
-        }}
       >
         <div className="min-w-0 flex-1">
           {editing ? (
@@ -310,72 +272,19 @@ function SavedRow({
               ref={inputRef}
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
-              onClick={(e) => e.stopPropagation()}
               onBlur={commit}
-              onKeyDown={(e) => {
-                e.stopPropagation();
-                if (e.key === "Enter") commit();
-                else if (e.key === "Escape") {
-                  setDraft(item.name);
-                  setEditing(false);
-                }
-              }}
-              className="w-full bg-transparent text-[13px] outline-none"
+              className="w-full bg-transparent outline-none"
               style={{ color: active ? "var(--accent-text)" : "var(--text)" }}
             />
           ) : (
-            <>
-              <div className="truncate font-medium">{item.name}</div>
-              <div
-                className="truncate text-[11px]"
-                style={{
-                  color: active
-                    ? "color-mix(in oklch, var(--accent-text) 70%, transparent)"
-                    : "var(--text-muted)",
-                }}
-              >
-                {item.snapshot.heading} · {item.snapshot.body}
-              </div>
-            </>
+            <div className="truncate font-medium">{item.name}</div>
           )}
         </div>
 
         {!editing && (
-          <div
-            className={`flex gap-0.5 transition-opacity ${
-              active ? "opacity-100" : "opacity-0 group-hover:opacity-100"
-            }`}
-          >
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                startEdit();
-              }}
-              aria-label="Rename"
-              className="rounded p-1"
-              style={{
-                color: active
-                  ? "color-mix(in oklch, var(--accent-text) 70%, transparent)"
-                  : "var(--text-muted)",
-              }}
-            >
-              <Pencil className="h-3 w-3" />
-            </button>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onDelete();
-              }}
-              aria-label="Delete"
-              className="rounded p-1"
-              style={{
-                color: active
-                  ? "color-mix(in oklch, var(--accent-text) 70%, transparent)"
-                  : "var(--text-muted)",
-              }}
-            >
-              <Trash2 className="h-3 w-3" />
-            </button>
+          <div className={`flex gap-1 transition-opacity ${active ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`}>
+            <button onClick={(e) => { e.stopPropagation(); startEdit(); }} className="p-1 hover:scale-110"><Pencil className="h-3 w-3" /></button>
+            <button onClick={(e) => { e.stopPropagation(); onDelete(); }} className="p-1 hover:scale-110"><Trash2 className="h-3 w-3" /></button>
           </div>
         )}
       </div>

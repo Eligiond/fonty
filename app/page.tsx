@@ -39,9 +39,9 @@ const HEADING_SYNONYMS = [
 ];
 
 const DEFAULT_TEXTS: Texts = {
-  heading: `Design that speaks ${HEADING_SYNONYMS[0]}.`,
-  subheading: "A type system for products that aim to feel considered.",
-  body: "Typography is the voice of an interface — pick a pairing that says what you want before a single word is read.",
+  heading: "The fastest way to ship beautifully typeset products.",
+  subheading: "Northwind gives design teams a shared system for typography, color, and motion - so every screen looks intentional.",
+  body: "Typography is intentional because it's not about product, but rather about the UX/UI experience, of which 50% is just typeset. Fonty keeps your visual language consistent from the marketing site to the production app. Set your tokens once and every team - engineering, design, content - pulls from the same source of truth.",
 };
 
 const pickNextWordIndex = (current: number) => {
@@ -73,9 +73,10 @@ export default function Page() {
 
   const [adjustments, setAdjustments] = useState<Adjustments>(DEFAULT_ADJUSTMENTS);
 
-  const [themeId, setThemeId] = useState<ThemeId>("cream");
+  const [themeId, setThemeId] = useState<ThemeId>("stunning");
   const [isDark, setIsDark] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [controlsOpen, setControlsOpen] = useState(true);
   const [settingsOpen, setSettingsOpen] = useState(false);
 
   // Hydrate
@@ -133,7 +134,7 @@ export default function Page() {
     setActiveSavedId(null);
   }, [locks, headingTouched]);
 
-  // Spacebar listener — ignore when typing in any editable surface
+  // Spacebar listener
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.code !== "Space") return;
@@ -213,6 +214,7 @@ export default function Page() {
     >
       <Sidebar
         open={sidebarOpen}
+        onToggle={() => setSidebarOpen((v) => !v)}
         saved={saved}
         activeId={activeSavedId}
         onLoad={loadSaved}
@@ -238,6 +240,8 @@ export default function Page() {
           copied={copied}
           sidebarOpen={sidebarOpen}
           onSidebarToggle={() => setSidebarOpen((v) => !v)}
+          controlsOpen={controlsOpen}
+          onControlsToggle={() => setControlsOpen((v) => !v)}
         />
         <div className="flex min-h-0 flex-1">
           <div className="relative min-w-0 flex-1">
@@ -257,10 +261,17 @@ export default function Page() {
                 texts={texts}
                 onTextChange={onTextChange}
                 adjustments={adjustments}
+                locks={locks}
+                onToggleLock={toggleLock}
               />
             )}
           </div>
-          <ControlsPanel values={adjustments} onChange={setAdjustments} />
+          <ControlsPanel 
+            values={adjustments} 
+            onChange={setAdjustments} 
+            open={controlsOpen}
+            onToggle={() => setControlsOpen((v) => !v)}
+          />
         </div>
       </div>
 

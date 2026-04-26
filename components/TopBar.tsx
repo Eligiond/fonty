@@ -9,6 +9,7 @@ import {
   Rows3,
   Columns3,
   PanelLeft,
+  SlidersHorizontal
 } from "lucide-react";
 
 export type Tab = "generate" | "scroll";
@@ -26,6 +27,8 @@ type Props = {
   copied: boolean;
   sidebarOpen: boolean;
   onSidebarToggle: () => void;
+  controlsOpen: boolean;
+  onControlsToggle: () => void;
 };
 
 export default function TopBar({
@@ -40,6 +43,8 @@ export default function TopBar({
   copied,
   sidebarOpen,
   onSidebarToggle,
+  controlsOpen,
+  onControlsToggle,
 }: Props) {
   return (
     <div
@@ -51,20 +56,6 @@ export default function TopBar({
       }}
     >
       <div className="flex items-center gap-2">
-        <button
-          onClick={onSidebarToggle}
-          aria-label={sidebarOpen ? "Collapse sidebar" : "Expand sidebar"}
-          className="rounded-md p-1.5 transition-colors hover:bg-[color:var(--surface)]"
-          style={{ color: sidebarOpen ? "var(--text)" : "var(--text-muted)" }}
-        >
-          <PanelLeft className="h-4 w-4" />
-        </button>
-
-        <div
-          className="mx-1 h-5 w-px"
-          style={{ background: "var(--border)" }}
-        />
-
         <SegmentedTabs>
           <Pill
             active={tab === "generate"}
@@ -86,29 +77,17 @@ export default function TopBar({
               active={viewMode === "vertical"}
               onClick={() => setViewMode("vertical")}
               icon={<Rows3 className="h-3.5 w-3.5" />}
-              label="Vertical"
             />
             <Pill
               active={viewMode === "horizontal"}
               onClick={() => setViewMode("horizontal")}
               icon={<Columns3 className="h-3.5 w-3.5" />}
-              label="Horizontal"
             />
           </SegmentedTabs>
         )}
       </div>
 
       <div className="flex items-center gap-2">
-        <span
-          className="hidden rounded-full px-3 py-1 text-[11px] uppercase tracking-widest sm:inline-block"
-          style={{
-            background: "var(--surface-muted)",
-            color: "var(--text-muted)",
-          }}
-        >
-          {vibe}
-        </span>
-
         <ActionButton onClick={onSave} variant="ghost" justActed={justSaved}>
           {justSaved ? (
             <>
@@ -161,12 +140,12 @@ function Pill({
   active: boolean;
   onClick: () => void;
   icon: React.ReactNode;
-  label: string;
+  label?: string;
 }) {
   return (
     <button
       onClick={onClick}
-      className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[13px] font-medium transition-colors"
+      className={`inline-flex items-center gap-1.5 rounded-full ${label ? "px-3 py-1" : "p-1.5"} text-[13px] font-medium transition-colors`}
       style={
         active
           ? {
@@ -178,7 +157,7 @@ function Pill({
       }
     >
       {icon}
-      {label}
+      {label && label}
     </button>
   );
 }

@@ -25,8 +25,23 @@ body {
   height: 100%;
   background: var(--bg);
   color: var(--text);
+  font-family: "Montserrat", sans-serif;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+}
+
+h1, h2, h3, h4, h5, h6, .font-heading {
+  font-family: "Space Grotesk", sans-serif;
+}
+
+.font-logo {
+  font-family: "Space Grotesk", sans-serif;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.font-karla {
+  font-family: "Karla", sans-serif;
 }
 
 * {

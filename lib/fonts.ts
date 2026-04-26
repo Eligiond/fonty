@@ -18,11 +18,11 @@ const HEADING_SERIFS = [
 
 const HEADING_DISPLAY_SANS = [
   "Syne", "Bricolage Grotesque", "Space Grotesk", "Archivo",
-  "Rubik", "Raleway",
+  "Rubik", "Raleway", "Montserrat",
 ];
 
 const SUBHEADING_GEOMETRIC = [
-  "DM Sans", "Outfit", "Plus Jakarta Sans", "Manrope", "Nunito", "Poppins",
+  "DM Sans", "Outfit", "Plus Jakarta Sans", "Manrope", "Nunito", "Poppins", "Montserrat",
 ];
 
 const SUBHEADING_HUMANIST = [
@@ -32,7 +32,7 @@ const SUBHEADING_HUMANIST = [
 
 const BODY_READABLE = [
   "Inter", "Source Sans 3", "Work Sans", "Open Sans",
-  "Lato", "Karla", "Roboto", "Libre Franklin", "Archivo Narrow",
+  "Lato", "Karla", "Roboto", "Libre Franklin", "Archivo Narrow", "Montserrat",
 ];
 
 const BODY_MONO = ["IBM Plex Mono"];
@@ -51,10 +51,12 @@ const FONT_VIBES: Record<string, string> = {
   "Merriweather": "Trustworthy",
   "Syne": "Bold Studio",
   "Bricolage Grotesque": "Expressive",
-  "Space Grotesk": "Tech / Crypto",
+  "Space Grotesk": "Next-gen pairing",
   "Archivo": "Newsroom",
   "Rubik": "Playful",
   "Raleway": "Elegant",
+  "Montserrat": "Modernist",
+  "Karla": "Functional",
 };
 
 export const ALL_POOL_FONTS: string[] = Array.from(new Set([
@@ -64,31 +66,28 @@ export const ALL_POOL_FONTS: string[] = Array.from(new Set([
   ...SUBHEADING_HUMANIST,
   ...BODY_READABLE,
   ...BODY_MONO,
+  "Space Grotesk",
+  "Montserrat",
+  "Karla",
 ]));
 
 // Curated starting pairings — all three fonts are distinct per row
 export const FONT_PAIRINGS: FontPairing[] = [
+  { id: "fonty-default",      vibe: "Next-gen pairing", heading: "Space Grotesk",        subheading: "Montserrat",        body: "Karla" },
   { id: "editorial-classic",  vibe: "Editorial",      heading: "Playfair Display",     subheading: "Source Sans 3",     body: "Lato" },
   { id: "modern-saas",        vibe: "Modern SaaS",    heading: "Syne",                  subheading: "Inter",             body: "Open Sans" },
   { id: "dm-system",          vibe: "Geometric",      heading: "DM Serif Display",      subheading: "DM Sans",           body: "Source Sans 3" },
   { id: "fraunces-inter",     vibe: "Warm Modern",    heading: "Fraunces",              subheading: "Inter",             body: "Karla" },
   { id: "bricolage",          vibe: "Expressive",     heading: "Bricolage Grotesque",   subheading: "DM Sans",           body: "Inter" },
   { id: "techy-mono",         vibe: "Tech / Crypto",  heading: "Space Grotesk",         subheading: "Outfit",            body: "IBM Plex Mono" },
-  { id: "lora-roboto",        vibe: "Approachable",   heading: "Lora",                  subheading: "Roboto",            body: "Open Sans" },
   { id: "luxury-cormorant",   vibe: "Luxury",         heading: "Cormorant Garamond",    subheading: "Montserrat",        body: "Lato" },
-  { id: "archivo-stack",      vibe: "Newsroom",       heading: "Archivo",               subheading: "Work Sans",         body: "Source Sans 3" },
   { id: "manrope-jakarta",    vibe: "Friendly Tech",  heading: "Manrope",               subheading: "Plus Jakarta Sans", body: "Inter" },
-  { id: "libre-stack",        vibe: "Classical",      heading: "Libre Caslon Display",  subheading: "Libre Franklin",    body: "Open Sans" },
   { id: "syne-worksans",      vibe: "Bold Studio",    heading: "Syne",                  subheading: "Work Sans",         body: "Karla" },
-  { id: "outfit-geometric",   vibe: "Soft Geometric", heading: "Outfit",                subheading: "DM Sans",           body: "Nunito" },
-  { id: "jakarta-ui",         vibe: "Product UI",     heading: "Plus Jakarta Sans",     subheading: "Manrope",           body: "Inter" },
-  { id: "crimson-work",       vibe: "Long-form",      heading: "Crimson Pro",           subheading: "Work Sans",         body: "Lato" },
-  { id: "garamond-lato",      vibe: "Timeless",       heading: "EB Garamond",           subheading: "Lato",              body: "Source Sans 3" },
   { id: "rubik-nunito",       vibe: "Playful",        heading: "Rubik",                 subheading: "Nunito",            body: "Karla" },
-  { id: "merriweather-open",  vibe: "Trustworthy",    heading: "Merriweather",          subheading: "Open Sans",         body: "Lato" },
   { id: "tenor-karla",        vibe: "Boutique",       heading: "Tenor Sans",            subheading: "Karla",             body: "Libre Franklin" },
   { id: "bodoni-montserrat",  vibe: "Fashion",        heading: "Bodoni Moda",           subheading: "Montserrat",        body: "Lato" },
 ];
+
 
 const WEIGHTS = "wght@300;400;500;600;700;800;900";
 const encodeFamily = (family: string) =>
