@@ -1,30 +1,30 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import {
   FONT_PAIRINGS,
   pickRandomPairing,
   type FontPairing,
   type FontRole,
 } from "@/lib/fonts";
-import { THEMES, getTheme, paletteToCssVars, type ThemeId } from "@/lib/themes";
-import Sidebar, { SIDEBAR_DEFAULT, SIDEBAR_MIN, SIDEBAR_MAX, type SavedItem } from "@/components/Sidebar";
-import TopBar, { type Tab, type ViewMode } from "@/components/TopBar";
+import { getTheme, paletteToCssVars } from "@/lib/themes";
+import TopBar from "@/components/TopBar";
 import GenerateView, { type Texts } from "@/components/GenerateView";
 import MockupView from "@/components/MockupView";
-import ControlsPanel, {
-  CONTROLS_DEFAULT,
-  CONTROLS_MIN,
-  CONTROLS_MAX,
+import SidePanel, {
   DEFAULT_ADJUSTMENTS,
   type Adjustments,
-} from "@/components/ControlsPanel";
+} from "@/components/SidePanel";
 import SettingsPanel from "@/components/Settings";
+import { Tick02Icon } from "@hugeicons/react";
+
+// Hooks
+import { usePreferences } from "@/hooks/usePreferences";
+import { useSavedPairings } from "@/hooks/useSavedPairings";
+import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
+import { useRef, useEffect } from "react";
 
 type LockState = Record<FontRole, boolean>;
-
-const STORAGE_KEY = "fonty:saved";
-const PREFS_KEY = "fonty:prefs";
 
 const DEFAULT_TEXTS: Texts = {
   heading: "Find font pairings that give your product character.",
@@ -39,66 +39,34 @@ export default function Page() {
     subheading: false,
     body: false,
   });
-  const [tab, setTab] = useState<Tab>("generate");
-  const [viewMode, setViewMode] = useState<ViewMode>("vertical");
-  const [saved, setSaved] = useState<SavedItem[]>([]);
-  const [activeSavedId, setActiveSavedId] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
-  const [justSaved, setJustSaved] = useState(false);
+  
+  const {
+    themeId, setThemeId,
+    isDark, setIsDark,
+    panelOpen, setPanelOpen,
+    panelTab, setPanelTab,
+    panelWidth, setPanelWidth,
+    viewMode, setViewMode,
+    mockupOffsets, setMockupOffsets,
+    mockupWidths, setMockupWidths,
+  } = usePreferences();
+
+  const {
+    saved,
+    activeSavedId, setActiveSavedId,
+    copied, setCopied,
+    justSaved, setJustSaved,
+    onConfirmSave,
+    renameSaved,
+    deleteSaved,
+    setSavedColor,
+    loadSaved,
+  } = useSavedPairings(pairing);
 
   const [texts, setTexts] = useState<Texts>(DEFAULT_TEXTS);
-
   const [adjustments, setAdjustments] = useState<Adjustments>(DEFAULT_ADJUSTMENTS);
-
-  const [themeId, setThemeId] = useState<ThemeId>("stunning");
-  const [isDark, setIsDark] = useState(false);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [controlsOpen, setControlsOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [sidebarWidth, setSidebarWidth] = useState(SIDEBAR_DEFAULT);
-  const [controlsWidth, setControlsWidth] = useState(CONTROLS_DEFAULT);
-  const searchInputRef = useRef<HTMLInputElement>(null);
-
-  // Hydrate
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) setSaved(JSON.parse(raw));
-    } catch {}
-    try {
-      const raw = localStorage.getItem(PREFS_KEY);
-      if (raw) {
-        const prefs = JSON.parse(raw);
-        if (prefs.themeId) setThemeId(prefs.themeId);
-        if (typeof prefs.isDark === "boolean") setIsDark(prefs.isDark);
-        if (typeof prefs.sidebarOpen === "boolean") setSidebarOpen(prefs.sidebarOpen);
-        if (typeof prefs.controlsOpen === "boolean") setControlsOpen(prefs.controlsOpen);
-        if (typeof prefs.sidebarWidth === "number") {
-          setSidebarWidth(Math.max(SIDEBAR_MIN, Math.min(SIDEBAR_MAX, prefs.sidebarWidth)));
-        }
-        if (typeof prefs.controlsWidth === "number") {
-          setControlsWidth(Math.max(CONTROLS_MIN, Math.min(CONTROLS_MAX, prefs.controlsWidth)));
-        }
-      }
-    } catch {}
-  }, []);
-
-  // Persist preferences
-  useEffect(() => {
-    try {
-      localStorage.setItem(
-        PREFS_KEY,
-        JSON.stringify({ themeId, isDark, sidebarOpen, controlsOpen, sidebarWidth, controlsWidth }),
-      );
-    } catch {}
-  }, [themeId, isDark, sidebarOpen, controlsOpen, sidebarWidth, controlsWidth]);
-
-  const persistSaved = (next: SavedItem[]) => {
-    setSaved(next);
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-    } catch {}
-  };
+  const [saveModalOpen, setSaveModalOpen] = useState(false);
 
   const roll = useCallback(() => {
     setPairing((current) => {
@@ -112,54 +80,9 @@ export default function Page() {
       };
     });
     setActiveSavedId(null);
-  }, [locks]);
+  }, [locks, setActiveSavedId]);
 
-  // Spacebar listener
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.code !== "Space") return;
-      const t = e.target as HTMLElement | null;
-      if (
-        t &&
-        (t.tagName === "INPUT" ||
-          t.tagName === "TEXTAREA" ||
-          t.isContentEditable)
-      ) {
-        return;
-      }
-      e.preventDefault();
-      roll();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [roll]);
-
-  // Cmd/Ctrl shortcuts: ⌘. toggles sidebar, ⌘K focuses search
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      const cmd = e.metaKey || e.ctrlKey;
-      if (!cmd) return;
-
-      if (e.key === ".") {
-        e.preventDefault();
-        setSidebarOpen((v) => !v);
-        return;
-      }
-
-      if (e.key === "k" || e.key === "K") {
-        e.preventDefault();
-        if (!sidebarOpen) {
-          setSidebarOpen(true);
-          // Wait for the sidebar's width transition (300ms) before focusing
-          setTimeout(() => searchInputRef.current?.focus(), 320);
-        } else {
-          searchInputRef.current?.focus();
-        }
-      }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [sidebarOpen]);
+  useKeyboardShortcuts({ roll, setPanelOpen, setSettingsOpen });
 
   const toggleLock = (role: FontRole) =>
     setLocks((l) => ({ ...l, [role]: !l[role] }));
@@ -169,53 +92,17 @@ export default function Page() {
     setTexts((t) => ({ ...t, [role]: v }));
   };
 
-  const savePairing = () => {
-    const id =
-      typeof crypto !== "undefined" && crypto.randomUUID
-        ? crypto.randomUUID()
-        : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-    const baseName = pairing.vibe;
-    const sameNameCount = saved.filter((s) =>
-      s.name.startsWith(baseName),
-    ).length;
-    const name =
-      sameNameCount === 0 ? baseName : `${baseName} · ${sameNameCount + 1}`;
-    const item: SavedItem = { id, name, snapshot: { ...pairing } };
-    persistSaved([item, ...saved]);
-    setActiveSavedId(id);
-    setJustSaved(true);
-    setTimeout(() => setJustSaved(false), 1500);
+  const handleConfirmSave = (name: string, description: string) => {
+    onConfirmSave(name, description);
+    setSaveModalOpen(false);
+    setPanelOpen(true);
+    setPanelTab("saved");
   };
 
-  const renameSaved = (id: string, name: string) =>
-    persistSaved(saved.map((s) => (s.id === id ? { ...s, name } : s)));
-
-  const setSavedColor = (id: string, color: string | null) =>
-    persistSaved(saved.map((s) => (s.id === id ? { ...s, color } : s)));
-
-  const deleteSaved = (id: string) => {
-    persistSaved(saved.filter((s) => s.id !== id));
-    if (activeSavedId === id) setActiveSavedId(null);
-  };
-
-  const loadSaved = (item: SavedItem) => {
-    setPairing(item.snapshot);
-    setActiveSavedId(item.id);
-  };
-
-  const activeSavedColor = useMemo(() => {
-    if (!activeSavedId) return null;
-    return saved.find((s) => s.id === activeSavedId)?.color ?? null;
-  }, [activeSavedId, saved]);
-
-  const tailwindConfig = useMemo(() => buildTailwindConfig(pairing), [pairing]);
-  const copyConfig = async () => {
-    try {
-      await navigator.clipboard.writeText(tailwindConfig);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
-    } catch {}
-  };
+  const activeColor = useMemo(
+    () => saved.find((item) => item.id === activeSavedId)?.color ?? null,
+    [saved, activeSavedId],
+  );
 
   const theme = getTheme(themeId);
   const palette = isDark ? theme.dark : theme.light;
@@ -226,72 +113,70 @@ export default function Page() {
       className="flex h-screen w-screen overflow-hidden"
       style={{ ...themeStyle, background: palette.bg, color: palette.text }}
     >
-      <Sidebar
-        open={sidebarOpen}
-        onToggle={() => setSidebarOpen((v) => !v)}
+      <div className="relative min-w-0 flex-1">
+        <div className="absolute inset-x-0 top-0 z-20">
+          <TopBar
+            viewMode={viewMode}
+            setViewMode={setViewMode}
+            vibe={pairing.vibe}
+            isDark={isDark}
+            onSave={() => setSaveModalOpen(true)}
+            justSaved={justSaved}
+            onCopy={async () => {
+              const config = buildTailwindConfig(pairing);
+              try {
+                await navigator.clipboard.writeText(config);
+                setCopied(true);
+                setTimeout(() => setCopied(false), 1500);
+              } catch {}
+            }}
+            copied={copied}
+            activeColor={activeColor}
+          />
+        </div>
+        <div className="absolute inset-0">
+          {viewMode === "scroll" ? (
+            <MockupView
+              pairing={pairing}
+              texts={texts}
+              onTextChange={onTextChange}
+              adjustments={adjustments}
+              locks={locks}
+              onToggleLock={toggleLock}
+              offsets={mockupOffsets}
+              setOffsets={setMockupOffsets}
+              widths={mockupWidths}
+              setWidths={setMockupWidths}
+            />
+          ) : (
+            <GenerateView
+              pairing={pairing}
+              locks={locks}
+              onToggleLock={toggleLock}
+              texts={texts}
+              onTextChange={onTextChange}
+              adjustments={adjustments}
+              viewMode={viewMode}
+            />
+          )}
+        </div>
+      </div>
+      <SidePanel
+        open={panelOpen}
+        onToggle={() => setPanelOpen((v) => !v)}
+        width={panelWidth}
+        onWidthChange={setPanelWidth}
+        tab={panelTab}
+        onTabChange={setPanelTab}
         saved={saved}
         activeId={activeSavedId}
-        onLoad={loadSaved}
+        onLoad={(item) => loadSaved(item, setPairing)}
         onRename={renameSaved}
         onDelete={deleteSaved}
         onSetColor={setSavedColor}
-        onNewRoll={roll}
-        onOpenSettings={() => setSettingsOpen(true)}
-        themeId={themeId}
-        setThemeId={setThemeId}
-        isDark={isDark}
-        setIsDark={setIsDark}
-        width={sidebarWidth}
-        onWidthChange={setSidebarWidth}
-        searchInputRef={searchInputRef}
-      />
-      <div className="flex min-w-0 flex-1 flex-col">
-        <TopBar
-          tab={tab}
-          setTab={setTab}
-          viewMode={viewMode}
-          setViewMode={setViewMode}
-          vibe={pairing.vibe}
-          onSave={savePairing}
-          justSaved={justSaved}
-          onCopy={copyConfig}
-          copied={copied}
-          sidebarOpen={sidebarOpen}
-          onSidebarToggle={() => setSidebarOpen((v) => !v)}
-          controlsOpen={controlsOpen}
-          onControlsToggle={() => setControlsOpen((v) => !v)}
-          activeColor={activeSavedColor}
-        />
-        <div className="flex min-h-0 flex-1 relative">
-            {tab === "generate" ? (
-              <GenerateView
-                pairing={pairing}
-                locks={locks}
-                onToggleLock={toggleLock}
-                texts={texts}
-                onTextChange={onTextChange}
-                adjustments={adjustments}
-                viewMode={viewMode}
-              />
-            ) : (
-              <MockupView
-                pairing={pairing}
-                texts={texts}
-                onTextChange={onTextChange}
-                adjustments={adjustments}
-                locks={locks}
-                onToggleLock={toggleLock}
-              />
-            )}
-        </div>
-      </div>
-      <ControlsPanel
         values={adjustments}
         onChange={setAdjustments}
-        open={controlsOpen}
-        onToggle={() => setControlsOpen((v) => !v)}
-        width={controlsWidth}
-        onWidthChange={setControlsWidth}
+        onOpenSettings={() => setSettingsOpen(true)}
       />
 
       {settingsOpen && (
@@ -303,8 +188,93 @@ export default function Page() {
           onClose={() => setSettingsOpen(false)}
         />
       )}
+
+      {saveModalOpen && (
+        <SaveModal 
+            onConfirm={handleConfirmSave}
+            onCancel={() => setSaveModalOpen(false)}
+            defaultName={pairing.vibe}
+        />
+      )}
     </main>
   );
+}
+
+function SaveModal({ onConfirm, onCancel, defaultName }: { 
+    onConfirm: (name: string, description: string) => void;
+    onCancel: () => void;
+    defaultName: string;
+}) {
+    const [name, setName] = useState(defaultName);
+    const [description, setDescription] = useState("");
+    const inputRef = useRef<HTMLInputElement>(null);
+
+    useEffect(() => {
+        inputRef.current?.focus();
+        inputRef.current?.select();
+    }, []);
+
+    const handleConfirm = () => {
+        if (!name.trim()) return;
+        onConfirm(name.trim(), description.trim());
+    };
+
+    return (
+        <div className="fixed inset-0 z-[1000] flex items-center justify-center p-6">
+            <div className="absolute inset-0 bg-black/20 backdrop-blur-sm" onClick={onCancel} />
+            <div 
+                className="relative w-full max-w-sm rounded-2xl border p-6 shadow-2xl animate-in fade-in zoom-in duration-200"
+                style={{ background: "var(--surface)", borderColor: "var(--border)" }}
+                onKeyDown={(e) => {
+                    if (e.key === "Enter") handleConfirm();
+                    if (e.key === "Escape") onCancel();
+                }}
+            >
+                <h2 className="text-lg font-bold tracking-tight mb-4">Save Pairing</h2>
+                <div className="flex flex-col gap-4">
+                    <div className="flex flex-col gap-1.5">
+                        <label className="text-[11px] font-bold uppercase tracking-widest opacity-50 ml-1">Name</label>
+                        <input 
+                            ref={inputRef}
+                            value={name}
+                            onChange={(e) => setName(e.target.value)}
+                            placeholder="Vibe name..."
+                            className="w-full h-10 rounded-xl px-3 text-[13px] outline-none border-2 transition-all focus:border-[var(--accent)]"
+                            style={{ background: "var(--bg)", borderColor: "var(--border)", color: "var(--text)" }}
+                        />
+                    </div>
+                    <div className="flex flex-col gap-1.5">
+                        <label className="text-[11px] font-bold uppercase tracking-widest opacity-50 ml-1">Description</label>
+                        <textarea 
+                            value={description}
+                            onChange={(e) => setDescription(e.target.value)}
+                            placeholder="Optional notes..."
+                            className="w-full h-24 rounded-xl px-3 py-2 text-[13px] outline-none border-2 transition-all focus:border-[var(--accent)] resize-none"
+                            style={{ background: "var(--bg)", borderColor: "var(--border)", color: "var(--text)" }}
+                        />
+                    </div>
+                </div>
+
+                <div className="flex items-center justify-end gap-2 mt-8">
+                    <button 
+                        onClick={onCancel}
+                        className="h-10 px-4 rounded-xl text-[13px] font-bold transition-all hover:bg-[color:var(--surface-muted)] active:scale-95"
+                        style={{ color: "var(--text-muted)" }}
+                    >
+                        Cancel
+                    </button>
+                    <button 
+                        onClick={handleConfirm}
+                        className="h-10 px-6 rounded-xl text-[13px] font-bold transition-all hover:opacity-90 active:scale-95 flex items-center gap-2"
+                        style={{ background: "var(--accent)", color: "var(--accent-text)" }}
+                    >
+                        <Tick02Icon size={18} />
+                        Save Pairing
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
 }
 
 function buildTailwindConfig(p: FontPairing): string {

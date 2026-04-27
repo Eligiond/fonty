@@ -3,7 +3,7 @@ import { buildAllFontsUrl } from "@/lib/fonts";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Fonty — Coolors for Fonts",
+  title: "Fonty - The super fast font generator!",
   description: "Press space to discover beautiful Google Font pairings.",
 };
 

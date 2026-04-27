@@ -1,10 +1,16 @@
 "use client";
 
 import { useState } from "react";
-import { Lock, Unlock, Copy, Check } from "lucide-react";
+import {
+  SquareLock02Icon,
+  SquareUnlock02Icon,
+  Copy01Icon,
+  Tick02Icon,
+} from "@hugeicons/react";
 import { cssFamily, type FontPairing, type FontRole } from "@/lib/fonts";
 import EditableText from "@/components/EditableText";
-import type { Adjustments } from "@/components/ControlsPanel";
+import IconButton from "@/components/IconButton";
+import type { Adjustments } from "@/components/SidePanel";
 import type { ViewMode } from "@/components/TopBar";
 
 const ROLE_ORDER: FontRole[] = ["heading", "subheading", "body"];
@@ -50,7 +56,7 @@ export default function GenerateView({
 }: Props) {
   if (viewMode === "vertical") {
     return (
-      <div className="grid h-full grid-rows-3">
+      <div className="grid h-full grid-rows-3 pt-8">
         {ROLE_ORDER.map((role) => (
           <Stripe
             key={role}
@@ -126,10 +132,14 @@ function Stripe({
   const meta = ROLE_TAG[role];
   return (
     <section
-      className="flex items-center gap-4 px-6 md:px-10"
-      style={{ background: STRIPE_VAR[role], color: "var(--text)" }}
+      className="flex items-center gap-4 px-6 md:px-10 transition-colors duration-500"
+      style={{ 
+        background: locked 
+          ? `color-mix(in oklch, var(--accent) 4%, ${STRIPE_VAR[role]})` 
+          : STRIPE_VAR[role], 
+        color: "var(--text)" 
+      }}
     >
-      {/* LEFT: sample text */}
       <div className="min-w-0 flex-1">
         <EditableText
           value={text}
@@ -140,17 +150,16 @@ function Stripe({
         />
       </div>
 
-      {/* RIGHT: metadata + actions */}
       <aside className="flex flex-shrink-0 items-center gap-3 text-right">
-        <div className="min-w-0 max-w-[140px]">
+        <div className="w-[140px]">
           <div
-            className="text-[10px] uppercase tracking-[0.16em]"
-            style={{ color: "var(--text-muted)" }}
+            className="text-[11px] uppercase tracking-[0.16em] opacity-80 truncate"
+            style={{ color: "var(--text)" }}
           >
             {meta.tag} · {meta.label}
           </div>
           <div
-            className="mt-0.5 truncate text-[13px] font-medium"
+            className="mt-0.5 truncate text-[14px] font-medium"
             style={{ fontFamily: cssFamily(family), color: "var(--text)" }}
           >
             {family}
@@ -185,17 +194,19 @@ function Column({
   const meta = ROLE_TAG[role];
   return (
     <section
-      className="relative flex h-full flex-col justify-between border-r px-6 py-8 last:border-r-0 md:px-8 md:py-10"
+      className="relative flex h-full flex-col justify-between border-r px-6 pb-12 pt-32 last:border-r-0 md:px-12 md:pb-16 md:pt-32 transition-colors duration-500"
       style={{
-        background: STRIPE_VAR[role],
+        background: locked 
+          ? `color-mix(in oklch, var(--accent) 4%, ${STRIPE_VAR[role]})` 
+          : STRIPE_VAR[role],
         color: "var(--text)",
         borderColor: "var(--border)",
       }}
     >
       <header className="flex items-start justify-between gap-3">
         <div
-          className="text-[10px] uppercase tracking-[0.16em]"
-          style={{ color: "var(--text-muted)" }}
+          className="text-[11px] uppercase tracking-[0.16em] opacity-80"
+          style={{ color: "var(--text)" }}
         >
           {meta.tag} · {meta.label}
         </div>
@@ -234,18 +245,14 @@ function LockButton({
   onToggle: () => void;
 }) {
   return (
-    <button
+    <IconButton
       onClick={onToggle}
-      aria-label={locked ? "Unlock font" : "Lock font"}
+      active={locked}
+      ariaLabel={locked ? "Unlock font" : "Lock font"}
       title={locked ? "Unlock font" : "Lock font"}
-      className={`flex-shrink-0 rounded-full p-1.5 transition-all hover:scale-110 active:scale-90 border ${
-        locked
-          ? "bg-[color:var(--accent)] text-[color:var(--accent-text)] border-[color:var(--accent)]"
-          : "bg-[color:var(--bg)] border-[color:var(--border)] text-[color:var(--text-muted)] hover:text-[color:var(--text)]"
-      }`}
     >
-      {locked ? <Lock className="h-3.5 w-3.5" /> : <Unlock className="h-3.5 w-3.5" />}
-    </button>
+      {locked ? <SquareLock02Icon size={18} /> : <SquareUnlock02Icon size={18} />}
+    </IconButton>
   );
 }
 
@@ -272,15 +279,13 @@ function CopyButton({
   };
 
   return (
-    <button
+    <IconButton
       onClick={handleCopy}
-      aria-label="Copy font config"
+      active={copied}
+      ariaLabel="Copy font config"
       title="Copy font config"
-      className={`flex-shrink-0 rounded-full p-1.5 transition-all hover:scale-110 active:scale-90 border bg-[color:var(--bg)] border-[color:var(--border)] ${
-        copied ? "text-[color:var(--text)]" : "text-[color:var(--text-muted)] hover:text-[color:var(--text)]"
-      }`}
     >
-      {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
-    </button>
+      {copied ? <Tick02Icon size={18} /> : <Copy01Icon size={18} />}
+    </IconButton>
   );
 }

@@ -1,18 +1,14 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { X, Moon, Sun, Check, Heart, Upload, Trash2 } from "lucide-react";
+import {
+  Cancel01Icon,
+  Moon01Icon,
+  Sun01Icon,
+  Tick02Icon,
+  Upload01Icon,
+  Delete02Icon,
+} from "@hugeicons/react";
 import { THEMES, type ThemeId } from "@/lib/themes";
-import { ALL_POOL_FONTS } from "@/lib/fonts";
-
-const PROFILE_KEY = "fonty:profile";
-const FAVORITES_KEY = "fonty:favorites";
-const CUSTOM_FONTS_KEY = "fonty:custom-fonts";
-
-type CustomFont = {
-  name: string;
-  dataUrl: string;
-};
 
 type Props = {
   themeId: ThemeId;
@@ -29,385 +25,125 @@ export default function SettingsPanel({
   setIsDark,
   onClose,
 }: Props) {
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [favorites, setFavorites] = useState<Set<string>>(new Set());
-  const [customFonts, setCustomFonts] = useState<CustomFont[]>([]);
-  const [uploading, setUploading] = useState(false);
-  const panelRef = useRef<HTMLDivElement>(null);
-  const fileRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem(PROFILE_KEY);
-      if (raw) {
-        const p = JSON.parse(raw);
-        if (p.name) setName(p.name);
-        if (p.email) setEmail(p.email);
-      }
-    } catch {}
-    try {
-      const raw = localStorage.getItem(FAVORITES_KEY);
-      if (raw) setFavorites(new Set(JSON.parse(raw)));
-    } catch {}
-    try {
-      const raw = localStorage.getItem(CUSTOM_FONTS_KEY);
-      if (raw) {
-        const fonts: CustomFont[] = JSON.parse(raw);
-        setCustomFonts(fonts);
-        fonts.forEach(injectFontFace);
-      }
-    } catch {}
-  }, []);
-
-  useEffect(() => {
-    const onEsc = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
-    document.addEventListener("keydown", onEsc);
-    return () => document.removeEventListener("keydown", onEsc);
-  }, [onClose]);
-
-  const saveProfile = () => {
-    try {
-      localStorage.setItem(PROFILE_KEY, JSON.stringify({ name, email }));
-    } catch {}
-  };
-
-  const toggleFavorite = (font: string) => {
-    setFavorites((prev) => {
-      const next = new Set(prev);
-      if (next.has(font)) next.delete(font);
-      else next.add(font);
-      try {
-        localStorage.setItem(FAVORITES_KEY, JSON.stringify([...next]));
-      } catch {}
-      return next;
-    });
-  };
-
-  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setUploading(true);
-    try {
-      const dataUrl = await readFileAsDataUrl(file);
-      const fontName = file.name
-        .replace(/\.(ttf|otf|woff2?|eot)$/i, "")
-        .replace(/[-_]+/g, " ")
-        .replace(/\b\w/g, (c) => c.toUpperCase());
-      const font: CustomFont = { name: fontName, dataUrl };
-      injectFontFace(font);
-      setCustomFonts((prev) => {
-        const next = [...prev, font];
-        try {
-          localStorage.setItem(CUSTOM_FONTS_KEY, JSON.stringify(next));
-        } catch {}
-        return next;
-      });
-    } catch (err) {
-      console.error("Font upload failed", err);
-    } finally {
-      setUploading(false);
-      if (fileRef.current) fileRef.current.value = "";
-    }
-  };
-
-  const removeCustomFont = (fontName: string) => {
-    setCustomFonts((prev) => {
-      const next = prev.filter((f) => f.name !== fontName);
-      try {
-        localStorage.setItem(CUSTOM_FONTS_KEY, JSON.stringify(next));
-      } catch {}
-      return next;
-    });
-  };
-
   return (
-    <div
-      className="fixed inset-0 z-50 flex"
-      style={{ animation: "fonty-fade-in 180ms cubic-bezier(0.23, 1, 0.32, 1)" }}
-    >
-      {/* Backdrop */}
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/20 p-4 backdrop-blur-sm animate-in fade-in duration-200">
       <div
-        className="absolute inset-0"
-        style={{ background: "rgba(0,0,0,0.45)" }}
-        onClick={onClose}
-      />
-
-      {/* Panel */}
-      <div
-        ref={panelRef}
-        className="relative ml-auto flex h-full w-full max-w-md flex-col overflow-y-auto shadow-2xl"
+        className="w-full max-w-md overflow-hidden rounded-3xl border shadow-2xl animate-in zoom-in-95 slide-in-from-bottom-4 duration-300 ease-out"
         style={{
-          background: "var(--bg)",
+          background: "var(--surface)",
+          borderColor: "var(--border)",
           color: "var(--text)",
-          animation: "fonty-slide-right 220ms cubic-bezier(0.23, 1, 0.32, 1)",
         }}
-        role="dialog"
-        aria-label="Settings"
       >
-        {/* Header */}
-        <div
-          className="sticky top-0 z-10 flex items-center justify-between border-b px-6 py-4"
-          style={{ background: "var(--bg)", borderColor: "var(--border)" }}
-        >
-          <span className="text-[13px] font-semibold uppercase tracking-[0.14em]" style={{ color: "var(--text-muted)" }}>
-            Settings
-          </span>
+        <header className="flex items-center justify-between border-b px-6 py-4" style={{ borderColor: "var(--border)" }}>
+          <h2 className="font-logo text-xl tracking-tight">Settings</h2>
           <button
             onClick={onClose}
-            aria-label="Close settings"
-            className="rounded-full p-1.5 transition-colors hover:bg-[color:var(--surface)]"
+            className="rounded-full p-2 transition-colors hover:bg-[color:var(--bg)]"
             style={{ color: "var(--text-muted)" }}
           >
-            <X className="h-4 w-4" />
+            <Cancel01Icon size={20} />
           </button>
-        </div>
+        </header>
 
-        <div className="flex flex-col gap-8 px-6 py-6">
-          {/* Profile */}
-          <Section title="Profile">
-            <div className="flex flex-col gap-3">
-              <Field label="Name">
-                <input
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  onBlur={saveProfile}
-                  placeholder="Your name"
-                  className="w-full rounded-lg border px-3 py-2 text-sm outline-none transition-colors focus:border-[color:var(--accent)]"
-                  style={{
-                    background: "var(--surface)",
-                    borderColor: "var(--border)",
-                    color: "var(--text)",
-                  }}
-                />
-              </Field>
-              <Field label="Email">
-                <input
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  onBlur={saveProfile}
-                  placeholder="your@email.com"
-                  type="email"
-                  className="w-full rounded-lg border px-3 py-2 text-sm outline-none transition-colors focus:border-[color:var(--accent)]"
-                  style={{
-                    background: "var(--surface)",
-                    borderColor: "var(--border)",
-                    color: "var(--text)",
-                  }}
-                />
-              </Field>
-            </div>
-          </Section>
-
-          {/* Appearance */}
-          <Section title="Appearance">
-            <div className="flex flex-col gap-4">
-              <div>
-                <div className="mb-3 text-xs font-medium" style={{ color: "var(--text-muted)" }}>
-                  Color theme
-                </div>
-                <div className="flex flex-wrap gap-2.5">
-                  {THEMES.map((t) => {
-                    const palette = isDark ? t.dark : t.light;
-                    const active = t.id === themeId;
-                    return (
-                      <button
-                        key={t.id}
-                        onClick={() => setThemeId(t.id as ThemeId)}
-                        aria-label={t.name}
-                        title={t.name}
-                        className="relative h-8 w-8 flex-shrink-0 rounded-full border transition-shadow"
-                        style={{
-                          backgroundImage: `linear-gradient(135deg, ${palette.stripe1} 0% 50%, ${palette.stripe3} 50% 100%)`,
-                          borderColor: active ? "var(--text)" : "var(--border)",
-                          boxShadow: active
-                            ? "0 0 0 2px var(--bg), 0 0 0 3px var(--text)"
-                            : undefined,
-                        }}
-                      >
-                        {active && (
-                          <Check
-                            className="absolute inset-0 m-auto h-3.5 w-3.5"
-                            style={{ color: palette.accent }}
-                          />
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
+        <div className="space-y-8 p-6">
+          {/* Appearance Section */}
+          <section>
+            <h3 className="mb-4 text-[10px] font-bold uppercase tracking-[0.2em] opacity-40">
+              Appearance
+            </h3>
+            <div className="grid grid-cols-2 gap-3">
               <button
-                onClick={() => setIsDark(!isDark)}
-                className="flex items-center justify-between rounded-lg border px-4 py-3 text-left transition-colors hover:bg-[color:var(--surface-muted)]"
-                style={{ borderColor: "var(--border)" }}
+                onClick={() => setIsDark(false)}
+                className={`flex items-center justify-center gap-2 rounded-2xl border py-3 text-sm font-semibold transition-all ${
+                  !isDark ? "shadow-md scale-[1.02]" : "opacity-60 grayscale"
+                }`}
+                style={{
+                  background: !isDark ? "var(--bg)" : "transparent",
+                  borderColor: !isDark ? "var(--accent)" : "var(--border)",
+                }}
               >
-                <span className="inline-flex items-center gap-2.5">
-                  {isDark ? (
-                    <Moon className="h-4 w-4" />
-                  ) : (
-                    <Sun className="h-4 w-4" />
+                <Sun01Icon size={18} />
+                Light
+              </button>
+              <button
+                onClick={() => setIsDark(true)}
+                className={`flex items-center justify-center gap-2 rounded-2xl border py-3 text-sm font-semibold transition-all ${
+                  isDark ? "shadow-md scale-[1.02]" : "opacity-60 grayscale"
+                }`}
+                style={{
+                  background: isDark ? "var(--bg)" : "transparent",
+                  borderColor: isDark ? "var(--accent)" : "var(--border)",
+                }}
+              >
+                <Moon01Icon size={18} />
+                Dark
+              </button>
+            </div>
+          </section>
+
+          {/* Theme Section */}
+          <section>
+            <h3 className="mb-4 text-[10px] font-bold uppercase tracking-[0.2em] opacity-40">
+              Theme Palette
+            </h3>
+            <div className="grid grid-cols-3 gap-3">
+              {THEMES.map((t) => (
+                <button
+                  key={t.id}
+                  onClick={() => setThemeId(t.id)}
+                  className={`group relative flex flex-col items-center gap-2 rounded-2xl border p-3 transition-all ${
+                    themeId === t.id ? "shadow-md scale-[1.02]" : "opacity-60"
+                  }`}
+                  style={{
+                    background: themeId === t.id ? "var(--bg)" : "transparent",
+                    borderColor: themeId === t.id ? "var(--accent)" : "var(--border)",
+                  }}
+                >
+                  <div
+                    className="h-8 w-8 rounded-full border shadow-inner transition-transform group-hover:scale-110"
+                    style={{ background: t.swatch, borderColor: "var(--border)" }}
+                  />
+                  <span className="text-xs font-bold">{t.name}</span>
+                  {themeId === t.id && (
+                    <div className="absolute -right-1 -top-1 rounded-full bg-[color:var(--accent)] p-0.5 text-[color:var(--accent-text)] shadow-sm">
+                      <Tick02Icon size={10} />
+                    </div>
                   )}
-                  <span className="text-sm font-medium">Dark mode</span>
-                </span>
-                <Toggle active={isDark} />
-              </button>
+                </button>
+              ))}
             </div>
-          </Section>
+          </section>
 
-          {/* Favorite Fonts */}
-          <Section title={`Favorite Fonts${favorites.size > 0 ? ` · ${favorites.size}` : ""}`}>
-            <div
-              className="flex max-h-72 flex-col gap-0.5 overflow-y-auto rounded-lg border"
-              style={{ borderColor: "var(--border)" }}
-            >
-              {ALL_POOL_FONTS.map((font, i) => {
-                const fav = favorites.has(font);
-                return (
-                  <button
-                    key={font}
-                    onClick={() => toggleFavorite(font)}
-                    className="flex items-center justify-between px-3 py-2.5 text-left text-[13px] transition-colors hover:bg-[color:var(--surface)]"
-                    style={{
-                      borderBottom:
-                        i < ALL_POOL_FONTS.length - 1
-                          ? `1px solid var(--border)`
-                          : undefined,
-                      color: fav ? "var(--text)" : "var(--text-muted)",
-                    }}
-                  >
-                    <span style={{ fontFamily: `"${font}", system-ui, sans-serif` }}>
-                      {font}
-                    </span>
-                    <Heart
-                      className="h-3.5 w-3.5 flex-shrink-0 transition-colors"
-                      style={{
-                        color: fav ? "var(--accent)" : "var(--border)",
-                        fill: fav ? "var(--accent)" : "transparent",
-                      }}
-                    />
-                  </button>
-                );
-              })}
+          {/* Export/Import Simulation */}
+          <section>
+            <h3 className="mb-4 text-[10px] font-bold uppercase tracking-[0.2em] opacity-40">
+              Data Management
+            </h3>
+            <div className="flex flex-col gap-2">
+               <button className="flex w-full items-center justify-between rounded-xl border px-4 py-3 text-sm font-medium transition-colors hover:bg-[color:var(--bg)]" style={{ borderColor: "var(--border)" }}>
+                  <div className="flex items-center gap-3">
+                    <Upload01Icon size={18} className="opacity-60" />
+                    Export all pairings
+                  </div>
+                  <span className="text-[10px] opacity-40">JSON</span>
+               </button>
+               <button className="flex w-full items-center justify-between rounded-xl border px-4 py-3 text-sm font-medium transition-colors hover:bg-[color:var(--bg)]" style={{ borderColor: "var(--border)" }}>
+                  <div className="flex items-center gap-3 text-red-500">
+                    <Delete02Icon size={18} />
+                    Reset local data
+                  </div>
+               </button>
             </div>
-          </Section>
-
-          {/* Custom Fonts */}
-          <Section title="Custom Fonts">
-            <div className="flex flex-col gap-3">
-              <p className="text-xs leading-relaxed" style={{ color: "var(--text-muted)" }}>
-                Upload a .ttf, .otf, .woff or .woff2 file. It will be injected into the page immediately and remembered across sessions.
-              </p>
-
-              <input
-                ref={fileRef}
-                type="file"
-                accept=".ttf,.otf,.woff,.woff2"
-                className="hidden"
-                onChange={handleUpload}
-              />
-              <button
-                onClick={() => fileRef.current?.click()}
-                disabled={uploading}
-                className="inline-flex items-center gap-2 rounded-lg border px-4 py-2.5 text-sm font-medium transition-colors hover:bg-[color:var(--surface)] disabled:opacity-50"
-                style={{ borderColor: "var(--border)", color: "var(--text)" }}
-              >
-                <Upload className="h-4 w-4" />
-                {uploading ? "Uploading…" : "Upload font file"}
-              </button>
-
-              {customFonts.length > 0 && (
-                <ul className="flex flex-col gap-1">
-                  {customFonts.map((f) => (
-                    <li
-                      key={f.name}
-                      className="flex items-center justify-between rounded-md border px-3 py-2"
-                      style={{ borderColor: "var(--border)" }}
-                    >
-                      <span
-                        className="text-sm"
-                        style={{ fontFamily: `"${f.name}", system-ui, sans-serif` }}
-                      >
-                        {f.name}
-                      </span>
-                      <button
-                        onClick={() => removeCustomFont(f.name)}
-                        aria-label={`Remove ${f.name}`}
-                        className="rounded p-1 transition-colors hover:bg-[color:var(--surface-muted)]"
-                        style={{ color: "var(--text-muted)" }}
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          </Section>
+          </section>
         </div>
+
+        <footer className="border-t bg-[color:var(--surface-muted)] px-6 py-4 text-center" style={{ borderColor: "var(--border)" }}>
+           <p className="text-[11px] font-medium opacity-40">
+             Fonty v0.2.0 · Professional Typographic Workspace
+           </p>
+        </footer>
       </div>
     </div>
   );
-}
-
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <div>
-      <div
-        className="mb-4 text-[10px] uppercase tracking-[0.18em]"
-        style={{ color: "var(--text-muted)" }}
-      >
-        {title}
-      </div>
-      {children}
-    </div>
-  );
-}
-
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div className="flex flex-col gap-1.5">
-      <label className="text-xs font-medium" style={{ color: "var(--text-muted)" }}>
-        {label}
-      </label>
-      {children}
-    </div>
-  );
-}
-
-function Toggle({ active }: { active: boolean }) {
-  return (
-    <span
-      className="relative inline-flex h-5 w-8 flex-shrink-0 items-center rounded-full transition-colors"
-      style={{ background: active ? "var(--accent)" : "var(--surface-muted)" }}
-    >
-      <span
-        className="absolute h-3.5 w-3.5 rounded-full transition-transform"
-        style={{
-          background: active ? "var(--accent-text)" : "var(--text-muted)",
-          transform: active ? "translateX(17px)" : "translateX(3px)",
-          transitionDuration: "180ms",
-          transitionTimingFunction: "cubic-bezier(0.23, 1, 0.32, 1)",
-        }}
-      />
-    </span>
-  );
-}
-
-function injectFontFace(font: CustomFont) {
-  const id = `fonty-custom-${font.name.replace(/\s+/g, "-")}`;
-  if (document.getElementById(id)) return;
-  const style = document.createElement("style");
-  style.id = id;
-  style.textContent = `@font-face { font-family: "${font.name}"; src: url("${font.dataUrl}"); font-display: swap; }`;
-  document.head.appendChild(style);
-}
-
-function readFileAsDataUrl(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result as string);
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
 }

@@ -1,41 +1,34 @@
 "use client";
 
 import {
-  Bookmark,
-  Copy,
-  Check,
-  Type,
-  ScrollText,
-  Rows3,
-  Columns3,
-} from "lucide-react";
+  Bookmark02Icon,
+  Copy01Icon,
+  Tick02Icon,
+  Layout3RowIcon,
+  Layout3ColumnIcon,
+  ScrollIcon,
+} from "@hugeicons/react";
 import { getContrastText } from "@/lib/colors";
+import { Tooltip } from "./Tooltip";
 
-export type Tab = "generate" | "scroll";
-export type ViewMode = "vertical" | "horizontal";
+export type ViewMode = "vertical" | "horizontal" | "scroll";
 
 type Props = {
-  tab: Tab;
-  setTab: (t: Tab) => void;
   viewMode: ViewMode;
   setViewMode: (v: ViewMode) => void;
   vibe: string;
+  isDark?: boolean;
   onSave: () => void;
   justSaved: boolean;
   onCopy: () => void;
   copied: boolean;
-  sidebarOpen: boolean;
-  onSidebarToggle: () => void;
-  controlsOpen: boolean;
-  onControlsToggle: () => void;
-  activeColor: string | null;
+  activeColor?: string | null;
 };
 
 export default function TopBar({
-  tab,
-  setTab,
   viewMode,
   setViewMode,
+  isDark,
   onSave,
   justSaved,
   onCopy,
@@ -44,74 +37,94 @@ export default function TopBar({
 }: Props) {
   return (
     <div
-      className="flex h-12 items-center justify-between px-6 relative border-b"
+      className="flex h-16 items-center justify-between px-8 relative"
       style={{
-        background: "var(--bg)",
-        borderColor: "var(--border)",
         color: "var(--text)",
       }}
     >
-      {/* Left Group - Save button (Bookmark) */}
-      <div className="flex-1 flex items-center justify-start">
+      {/* Left Group - Instruction hint */}
+      <div className="flex-1 flex items-center justify-start h-full">
+        <button 
+          onClick={() => window.dispatchEvent(new KeyboardEvent("keydown", { code: "Space" }))}
+          className="group flex items-center gap-1.5 text-[13px] font-medium select-none"
+          style={{ color: "var(--text-muted)" }}
+        >
+          <span className={`${isDark ? "opacity-80" : "opacity-60"} group-hover:opacity-100 transition-opacity duration-300`}>
+            Press
+          </span>
+          <span 
+            className="inline-flex items-center justify-center px-2 py-0.5 rounded border border-[var(--border)] bg-[var(--surface-muted)] text-[10px] font-bold shadow-sm transition-all duration-300 ease-[cubic-bezier(0.23,1,0.32,1)] hover:scale-110 hover:bg-[var(--surface)] hover:text-[var(--text)] hover:shadow-md active:scale-95"
+          >
+            SPACEBAR
+          </span>
+          <span className={`${isDark ? "opacity-80" : "opacity-60"} group-hover:opacity-100 transition-opacity duration-300`}>
+            to generate font pairs
+          </span>
+        </button>
+      </div>
+
+      {/* Center Group - View Toggle centered */}
+      <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center justify-center">
+        <SegmentedTabs>
+          <Tooltip label="Vertical view" direction="bottom">
+            <Pill
+              active={viewMode === "vertical"}
+              onClick={() => setViewMode("vertical")}
+              icon={<Layout3RowIcon size={18} />}
+            />
+          </Tooltip>
+          <Tooltip label="Horizontal view" direction="bottom">
+            <Pill
+              active={viewMode === "horizontal"}
+              onClick={() => setViewMode("horizontal")}
+              icon={<Layout3ColumnIcon size={18} />}
+            />
+          </Tooltip>
+          <Tooltip label="Website view" direction="bottom">
+            <Pill
+              active={viewMode === "scroll"}
+              onClick={() => setViewMode("scroll")}
+              icon={<ScrollIcon size={18} />}
+            />
+          </Tooltip>
+        </SegmentedTabs>
+      </div>
+
+      {/* Right Group - Save (Ghost) and Copy (Solid) */}
+      <div className="flex-1 flex items-center justify-end gap-3 h-full">
         <ActionButton onClick={onSave} variant="ghost" justActed={justSaved}>
           {justSaved ? (
             <>
-              <Check className="h-3.5 w-3.5" />
+              <Tick02Icon size={18} />
               Saved
             </>
           ) : (
             <>
-              <Bookmark className="h-3.5 w-3.5 transition-transform group-hover:scale-110" />
+              <Bookmark02Icon 
+                size={18} 
+                className="transition-transform group-hover:scale-110" 
+              />
               Save
             </>
           )}
         </ActionButton>
-      </div>
-
-      {/* Center Group - Generate and Scroll perfectly centered */}
-      <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center gap-3">
-        <SegmentedTabs>
-          <Pill
-            active={tab === "generate"}
-            onClick={() => setTab("generate")}
-            icon={<Type className="h-3.5 w-3.5" />}
-            label="Generate"
-          />
-          <Pill
-            active={tab === "scroll"}
-            onClick={() => setTab("scroll")}
-            icon={<ScrollText className="h-3.5 w-3.5" />}
-            label="Scroll"
-          />
-        </SegmentedTabs>
-
-        {tab === "generate" && (
-          <SegmentedTabs>
-            <Pill
-              active={viewMode === "vertical"}
-              onClick={() => setViewMode("vertical")}
-              icon={<Rows3 className="h-3.5 w-3.5" />}
-            />
-            <Pill
-              active={viewMode === "horizontal"}
-              onClick={() => setViewMode("horizontal")}
-              icon={<Columns3 className="h-3.5 w-3.5" />}
-            />
-          </SegmentedTabs>
-        )}
-      </div>
-
-      {/* Right Group - Copy Config moved here for symmetry */}
-      <div className="flex-1 flex items-center justify-end">
-        <ActionButton onClick={onCopy} variant="solid" justActed={copied} accentColor={activeColor}>
+        <ActionButton 
+          onClick={onCopy} 
+          variant="solid" 
+          justActed={copied}
+          customColor={activeColor}
+        >
           {copied ? (
             <>
-              <Check className="h-3.5 w-3.5" />
+              <Tick02Icon size={18} />
               Copied
             </>
           ) : (
             <>
-              <Copy className="h-3.5 w-3.5 transition-transform group-hover:-rotate-6" />
+              <Copy01Icon 
+                size={18} 
+                className="transition-transform group-hover:-rotate-6" 
+              />
               Copy config
             </>
           )}
@@ -123,10 +136,7 @@ export default function TopBar({
 
 function SegmentedTabs({ children }: { children: React.ReactNode }) {
   return (
-    <div
-      className="flex items-center gap-0.5 rounded-full p-0.5"
-      style={{ background: "var(--surface-muted)" }}
-    >
+    <div className="flex items-center gap-1.5">
       {children}
     </div>
   );
@@ -136,33 +146,39 @@ function Pill({
   active,
   onClick,
   icon,
-  label,
 }: {
   active: boolean;
   onClick: () => void;
   icon: React.ReactNode;
-  label?: string;
 }) {
   return (
     <button
       onClick={onClick}
-      className={`inline-flex items-center gap-1.5 rounded-full ${label ? "px-4 py-1.5" : "p-2"} text-[13px] font-semibold transition-[background-color,color,box-shadow,transform] duration-150 ease-out active:scale-95 ${
-        active
-          ? ""
-          : "text-[color:var(--text-muted)] hover:text-[color:var(--text)] hover:bg-[color:var(--surface)]"
-      }`}
-      style={
-        active
-          ? {
-              background: "var(--bg)",
-              color: "var(--text)",
-              boxShadow: "0 1px 2px rgba(0,0,0,0.06), 0 0 0 1px var(--border)",
-            }
-          : undefined
-      }
+      className={`group relative inline-flex items-center justify-center rounded-full w-8 h-8 transition-all duration-200 ease-[cubic-bezier(0.23,1,0.32,1)] active:scale-[0.92]`}
+      style={{
+        background: active ? "var(--bg)" : "transparent",
+        color: active ? "var(--text)" : "var(--text-muted)",
+        boxShadow: active 
+          ? "0 1px 2px rgba(0,0,0,0.1), 0 0 0 1px var(--border)" 
+          : "none",
+      }}
+      onMouseEnter={(e) => {
+        if (!active) {
+          e.currentTarget.style.background = "var(--surface-muted)";
+          e.currentTarget.style.color = "var(--text)";
+          e.currentTarget.style.boxShadow = "inset 0 0 0 1px rgba(255,255,255,0.05)";
+        }
+      }}
+      onMouseLeave={(e) => {
+        if (!active) {
+          e.currentTarget.style.background = "transparent";
+          e.currentTarget.style.color = "var(--text-muted)";
+        }
+      }}
     >
-      {icon}
-      {label && label}
+      <div className="relative z-10 transition-transform duration-200 group-hover:scale-110">
+        {icon}
+      </div>
     </button>
   );
 }
@@ -171,40 +187,50 @@ function ActionButton({
   onClick,
   variant,
   justActed,
-  accentColor,
   children,
+  customColor,
+  className = "",
 }: {
   onClick: () => void;
   variant: "ghost" | "solid";
   justActed: boolean;
-  accentColor?: string | null;
   children: React.ReactNode;
+  customColor?: string | null;
+  className?: string;
 }) {
   const isSolid = variant === "solid";
-  const solidBg = accentColor ?? "var(--accent)";
-  const solidText = accentColor ? getContrastText(accentColor) : "var(--accent-text)";
+  
+  const bg = isSolid 
+    ? (customColor ?? "var(--text)") 
+    : "var(--bg)";
+  
+  const text = isSolid 
+    ? (customColor ? getContrastText(customColor) : "var(--bg)") 
+    : "var(--text)";
+
   return (
     <button
       onClick={onClick}
-      className={`group inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-[13px] font-bold transition-[background-color,color,box-shadow,transform] duration-200 ease-[cubic-bezier(0.23,1,0.32,1)] hover:-translate-y-px active:scale-95 ${
+      className={`group inline-flex items-center gap-2 rounded-full px-4 h-8 text-[12px] font-bold transition-all duration-200 hover:-translate-y-px active:scale-[0.97] ${
         justActed ? "fonty-pulse" : ""
-      }`}
+      } ${className}`}
       style={
         isSolid
           ? {
-              background: solidBg,
-              color: solidText,
+              background: bg,
+              color: text,
               boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
             }
           : {
-              background: "var(--bg)",
-              color: "var(--text)",
+              background: bg,
+              color: text,
               boxShadow: "0 0 0 1px var(--border)",
             }
       }
       onMouseEnter={(e) => {
         if (isSolid) {
           e.currentTarget.style.boxShadow = "0 6px 12px rgba(0,0,0,0.15)";
+          e.currentTarget.style.opacity = "0.9";
         } else {
           e.currentTarget.style.background = "var(--surface)";
         }
@@ -212,6 +238,7 @@ function ActionButton({
       onMouseLeave={(e) => {
         if (isSolid) {
           e.currentTarget.style.boxShadow = "0 2px 4px rgba(0,0,0,0.1)";
+          e.currentTarget.style.opacity = "1";
         } else {
           e.currentTarget.style.background = "var(--bg)";
         }
