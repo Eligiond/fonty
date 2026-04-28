@@ -6,6 +6,7 @@ import {
   rollPairing,
   pickFamilyForRole,
   buildUrlForFamilies,
+  cssFamily,
   MAX_SLOTS,
   MIN_SLOTS,
   type FontPairing,
@@ -197,26 +198,44 @@ export default function Page() {
     const newFamilies = Array.from(familiesNeeded).filter(f => !loadedFontsRef.current.has(f));
     if (newFamilies.length === 0) return;
 
-    // Inject individual links for each new family
-    newFamilies.forEach(family => {
-      const url = buildUrlForFamilies([family]);
+    // Inject a single link for the batch of new families
+    const url = buildUrlForFamilies(newFamilies);
+    if (url) {
       const link = document.createElement("link");
       link.rel = "stylesheet";
       link.href = url;
       document.head.appendChild(link);
-      loadedFontsRef.current.add(family);
-    });
+      newFamilies.forEach(f => loadedFontsRef.current.add(f));
+    }
   }, [pairing, buffer, saved]);
 
   const theme = getTheme(themeId);
   const palette = isDark ? theme.dark : theme.light;
   const themeStyle = paletteToCssVars(palette);
 
+  // Unique families to pre-fetch .woff2 files
+  const prefetchFamilies = Array.from(
+    new Set([
+      ...buffer.flatMap(p => p.slots.map(s => s.family)),
+      ...saved.flatMap(item => item.snapshot.slots.map(s => s.family))
+    ])
+  );
+
   return (
     <main
       className="flex h-screen w-screen overflow-hidden"
       style={{ ...themeStyle, background: palette.bg, color: palette.text }}
     >
+      {/* Hidden preloader to force browser to fetch font files ahead of time */}
+      <div 
+        aria-hidden="true" 
+        className="pointer-events-none absolute h-0 w-0 overflow-hidden opacity-0"
+      >
+        {prefetchFamilies.map(f => (
+          <span key={f} style={{ fontFamily: cssFamily(f) }}>.</span>
+        ))}
+      </div>
+
       <div className="relative min-w-0 flex-1">
         <div className="absolute inset-x-0 top-0 z-20">
           <TopBar
