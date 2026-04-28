@@ -302,7 +302,7 @@ function Stripe({
           </div>
         </div>
         <div className="flex flex-shrink-0 items-center gap-1.5">
-          <CopyButton family={slot.family} role={slot.role} label={`${meta.tag} · ${meta.label}`} locked={locked} />
+          <CopyButton family={slot.family} role={slot.role} />
           <LockButton locked={locked} onToggle={onToggleLock} />
         </div>
       </aside>
@@ -368,7 +368,7 @@ function Column({
           {meta.tag} · {meta.label}
         </div>
         <div className="flex flex-shrink-0 items-center gap-1.5">
-          <CopyButton family={slot.family} role={slot.role} label={`${meta.tag} · ${meta.label}`} locked={locked} />
+          <CopyButton family={slot.family} role={slot.role} />
           <LockButton locked={locked} onToggle={onToggleLock} />
         </div>
       </header>
@@ -513,19 +513,15 @@ function LockButton({
 function CopyButton({
   family,
   role,
-  label,
-  locked,
 }: {
   family: string;
   role: FontRole;
-  label: string;
-  locked: boolean;
 }) {
   const [copied, setCopied] = useState(false);
 
   const handleCopy = async () => {
     try {
-      const config = `// font: ${label}\nfamily: '${family}',\nrole: '${role}',\nlocked: ${locked}`;
+      const config = `${role}: ['${family}', 'system-ui', 'sans-serif'],`;
       await navigator.clipboard.writeText(config);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);

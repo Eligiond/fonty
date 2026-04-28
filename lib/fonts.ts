@@ -1131,7 +1131,7 @@ export const FONT_PAIRINGS: FontPairing[] = [
 ];
 
 
-const WEIGHTS = "wght@300;400;500;600;700;800;900";
+const WEIGHTS = "wght@400;500;600;700";
 const encodeFamily = (family: string) =>
   `family=${family.replace(/\s+/g, "+")}:${WEIGHTS}`;
 

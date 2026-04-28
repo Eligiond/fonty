@@ -48,11 +48,11 @@ export default function Page() {
     caption: false,
   });
 
-  // Keep buffer filled to 10 items
+  // Keep buffer filled to 20 items
   useEffect(() => {
-    if (buffer.length < 10) {
+    if (buffer.length < 20) {
       setBuffer((prev) => {
-        const needed = 10 - prev.length;
+        const needed = 20 - prev.length;
         const nextBatch: FontPairing[] = [];
         let currentSeed = prev.length > 0 ? prev[prev.length - 1] : pairing;
         
@@ -100,11 +100,12 @@ export default function Page() {
   const [saveModalOpen, setSaveModalOpen] = useState(false);
   const autoCloseRef = useRef(false);
   const loadedFontsRef = useRef<Set<string>>(new Set());
+  const [prefetchedInDom, setPrefetchedInDom] = useState<Set<string>>(new Set());
 
   const lastRollTime = useRef(0);
   const roll = useCallback(() => {
     const now = Date.now();
-    if (now - lastRollTime.current < 200) return;
+    if (now - lastRollTime.current < 80) return;
     lastRollTime.current = now;
     
     if (buffer.length > 0) {
@@ -206,20 +207,19 @@ export default function Page() {
       link.href = url;
       document.head.appendChild(link);
       newFamilies.forEach(f => loadedFontsRef.current.add(f));
+      
+      // Also mark for DOM prefetch
+      setPrefetchedInDom(prev => {
+        const next = new Set(prev);
+        newFamilies.forEach(f => next.add(f));
+        return next;
+      });
     }
   }, [pairing, buffer, saved]);
 
   const theme = getTheme(themeId);
   const palette = isDark ? theme.dark : theme.light;
   const themeStyle = paletteToCssVars(palette);
-
-  // Unique families to pre-fetch .woff2 files
-  const prefetchFamilies = Array.from(
-    new Set([
-      ...buffer.flatMap(p => p.slots.map(s => s.family)),
-      ...saved.flatMap(item => item.snapshot.slots.map(s => s.family))
-    ])
-  );
 
   return (
     <main
@@ -231,7 +231,7 @@ export default function Page() {
         aria-hidden="true" 
         className="pointer-events-none absolute h-0 w-0 overflow-hidden opacity-0"
       >
-        {prefetchFamilies.map(f => (
+        {Array.from(prefetchedInDom).map(f => (
           <span key={f} style={{ fontFamily: cssFamily(f) }}>.</span>
         ))}
       </div>

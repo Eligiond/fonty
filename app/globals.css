@@ -35,7 +35,7 @@ h1, h2, h3, h4, h5, h6, .font-heading {
 }
 
 .font-logo {
-  font-family: "Space Grotesk", sans-serif;
+  font-family: "Syncopate", system-ui, sans-serif;
   font-weight: 700;
   letter-spacing: -0.02em;
 }

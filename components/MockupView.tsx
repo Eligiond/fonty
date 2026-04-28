@@ -309,7 +309,7 @@ function FontBlock({
           </div>
         </div>
         <div className="flex flex-shrink-0 items-center gap-1.5">
-          <CopyButton family={slot.family} role={slot.role} label={label} locked={locked} />
+          <CopyButton family={slot.family} role={slot.role} />
           <LockButton locked={locked} onToggle={onToggleLock} />
         </div>
       </aside>
@@ -351,7 +351,7 @@ function CopyButton({
 
   const handleCopy = async () => {
     try {
-      const config = `// font: ${label}\nfamily: '${family}',\nrole: '${role}',\nlocked: ${locked}`;
+      const config = `${role}: ['${family}', 'system-ui', 'sans-serif'],`;
       await navigator.clipboard.writeText(config);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);

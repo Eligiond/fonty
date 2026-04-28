@@ -188,13 +188,13 @@ export default function SidePanel({
 
           {open && (
             <span
-              className="absolute right-10 top-1/2 -translate-y-1/2 text-[24px] tracking-tight select-none cursor-pointer uppercase leading-none translate-y-[calc(-50%-1px)] transition-all duration-300 ease-[cubic-bezier(0.23,1,0.32,1)] hover:scale-110 hover:-rotate-1 hover:text-[var(--accent)] active:scale-95"
+              className="absolute right-6 top-1/2 -translate-y-1/2 text-[26px] font-bold tracking-tight select-none cursor-pointer uppercase leading-none transition-all duration-300 ease-[cubic-bezier(0.23,1,0.32,1)] hover:scale-110 hover:-rotate-1 hover:text-[var(--accent)] active:scale-95"
               style={{ 
-                fontFamily: "'Paytone One', sans-serif", 
+                fontFamily: "'Syncopate', system-ui, sans-serif", 
                 color: "var(--text)"
               }}
             >
-              fontly
+              FONTFUN
             </span>
           )}
         </div>

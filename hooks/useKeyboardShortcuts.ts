@@ -10,7 +10,7 @@ export function useKeyboardShortcuts({ roll, setPanelOpen, setSettingsOpen }: Sh
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       // Space: Roll (using e.code for physical key detection)
-      if (e.code === "Space" && !e.repeat) {
+      if (e.code === "Space") {
         const t = e.target as HTMLElement | null;
         if (
           t &&
