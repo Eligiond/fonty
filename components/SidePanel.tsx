@@ -5,7 +5,7 @@ import { createPortal } from "react-dom";
 import {
   ArrowLeft01Icon,
   ArrowRight01Icon,
-  ReloadIcon,
+  ArrowTurnBackwardIcon,
   Settings01Icon,
   PencilEdit01Icon,
   Delete02Icon,
@@ -28,9 +28,10 @@ export type RoleAdjustment = {
 export type Adjustments = Record<FontRole, RoleAdjustment>;
 
 export const DEFAULT_ADJUSTMENTS: Adjustments = {
-  heading:    { fontSize: 48, lineHeight: 1, letterSpacing: 0 },
-  subheading: { fontSize: 26, lineHeight: 1, letterSpacing: 0 },
-  body:       { fontSize: 16, lineHeight: 1, letterSpacing: 0 },
+  heading:    { fontSize: 52, lineHeight: 1, letterSpacing: 0 },
+  subheading: { fontSize: 28, lineHeight: 1, letterSpacing: 0 },
+  body:       { fontSize: 20, lineHeight: 1, letterSpacing: 0 },
+  caption:    { fontSize: 16, lineHeight: 1, letterSpacing: 0 },
 };
 
 export type SavedItem = {
@@ -53,32 +54,31 @@ export type SavedFolder = {
 };
 export type SavedNode = SavedItem | SavedFolder;
 
-export const PANEL_MIN = 240;
-export const PANEL_MAX = 420;
-export const PANEL_DEFAULT = 300;
+export const PANEL_MIN = 200;
+export const PANEL_MAX = 400;
+export const PANEL_DEFAULT = 250;
 
 const RAIL_WIDTH = 64;
 
-const ROLE_CONFIG: Record<FontRole, {
+export const ROLE_CONFIG: Record<FontRole, {
   label: string;
   sizeMin: number; sizeMax: number; sizeStep: number;
 }> = {
   heading:    { label: "H1 · Heading",    sizeMin: 16, sizeMax: 96, sizeStep: 2 },
   subheading: { label: "H3 · Subheading", sizeMin: 12, sizeMax: 40, sizeStep: 1 },
   body:       { label: "P · Body",        sizeMin: 10, sizeMax: 22, sizeStep: 1 },
+  caption:    { label: "C · Caption",     sizeMin: 9,  sizeMax: 18, sizeStep: 1 },
 };
-
-const ROLES: FontRole[] = ["heading", "subheading", "body"];
 
 const PASTEL_COLORS: Array<{ name: string; value: string | null }> = [
   { name: "None",   value: null },
-  { name: "Red",    value: "#fecaca" },
-  { name: "Orange", value: "#fed7aa" },
-  { name: "Yellow", value: "#fef08a" },
-  { name: "Green",  value: "#bbf7d0" },
-  { name: "Blue",   value: "#bfdbfe" },
-  { name: "Purple", value: "#e9d5ff" },
-  { name: "Pink",   value: "#fbcfe8" },
+  { name: "Red",    value: "#ef4444" },
+  { name: "Orange", value: "#f97316" },
+  { name: "Yellow", value: "#facc15" },
+  { name: "Green",  value: "#22c55e" },
+  { name: "Blue",   value: "#3b82f6" },
+  { name: "Purple", value: "#a855f7" },
+  { name: "Pink",   value: "#ec4899" },
 ];
 
 const RAIL_BTN_CLASS =
@@ -103,6 +103,7 @@ type Props = {
   // Adjust tab
   values: Adjustments;
   onChange: (next: Adjustments) => void;
+  roles: FontRole[];
 
   // Footer
   onOpenSettings: () => void;
@@ -112,10 +113,11 @@ export default function SidePanel({
   open, onToggle, width, onWidthChange,
   tab, onTabChange,
   saved, activeId, onLoad, onRename, onDelete, onSetColor,
-  values, onChange,
+  values, onChange, roles,
   onOpenSettings,
 }: Props) {
   const [resizing, setResizing] = useState(false);
+  const isDefault = JSON.stringify(values) === JSON.stringify(DEFAULT_ADJUSTMENTS);
 
   const startResize = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -157,8 +159,8 @@ export default function SidePanel({
           />
         )}
 
-        {/* Header: Toggle + Tabs */}
-        <div className={`flex items-center h-16 px-3 gap-3 ${!open ? "justify-center" : ""}`}>
+        {/* Header: Toggle */}
+        <div className={`relative flex items-center h-16 px-3 ${open ? "justify-start" : "justify-center"}`}>
           <Tooltip
             label={open ? "Collapse panel" : "Expand panel"}
             shortcut="."
@@ -172,40 +174,58 @@ export default function SidePanel({
               style={{ color: "var(--text-muted)" }}
             >
               <div className={`relative flex items-center justify-center transition-transform duration-300 ease-[cubic-bezier(0.23,1,0.32,1)] ${open ? "group-hover:translate-x-0.5" : "group-hover:-translate-x-0.5"}`}>
-                {open ? <ArrowRight01Icon size={16} /> : <ArrowLeft01Icon size={16} />}
+                {open ? <ArrowRight01Icon size={18} /> : <ArrowLeft01Icon size={18} />}
                 <div className={`absolute opacity-0 transition-all duration-300 ease-[cubic-bezier(0.23,1,0.32,1)] ${
                   open 
                     ? "-left-1.5 group-hover:opacity-40 group-hover:-left-1" 
                     : "-right-1.5 group-hover:opacity-40 group-hover:-right-1"
                 }`}>
-                  {open ? <ArrowRight01Icon size={12} /> : <ArrowLeft01Icon size={12} />}
+                  {open ? <ArrowRight01Icon size={14} /> : <ArrowLeft01Icon size={14} />}
                 </div>
               </div>
             </button>
           </Tooltip>
-          
+
           {open && (
-            <div className="flex-1 min-w-0">
-              <PanelTabs tab={tab} onChange={onTabChange} />
-            </div>
+            <span
+              className="absolute right-10 top-1/2 -translate-y-1/2 text-[24px] tracking-tight select-none cursor-pointer uppercase leading-none translate-y-[calc(-50%-1px)] transition-all duration-300 ease-[cubic-bezier(0.23,1,0.32,1)] hover:scale-110 hover:-rotate-1 hover:text-[var(--accent)] active:scale-95"
+              style={{ 
+                fontFamily: "'Paytone One', sans-serif", 
+                color: "var(--text)"
+              }}
+            >
+              fontly
+            </span>
           )}
         </div>
-
-        {/* Content */}
+        {/* Content Area */}
         {open && (
-          <div className="flex-1 min-h-0 overflow-hidden">
-            {tab === "saved" ? (
-              <SavedListView
-                saved={saved}
-                activeId={activeId}
-                onLoad={onLoad}
-                onRename={onRename}
-                onDelete={onDelete}
-                onSetColor={onSetColor}
-              />
-            ) : (
-              <AdjustView values={values} onChange={onChange} />
-            )}
+          <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+            {/* Tab Navigation - Now at the top of content */}
+            <div className="px-3 pb-3">
+              <PanelTabs tab={tab} onChange={onTabChange} />
+            </div>
+
+            <div className="flex-1 min-h-0 overflow-hidden">
+              {tab === "adjust" ? (
+                <AdjustView 
+                  values={values} 
+                  onChange={onChange} 
+                  roles={roles} 
+                  isDefault={isDefault}
+                  onReset={() => onChange(DEFAULT_ADJUSTMENTS)}
+                />
+              ) : (
+                <SavedListView
+                  saved={saved}
+                  activeId={activeId}
+                  onLoad={onLoad}
+                  onRename={onRename}
+                  onDelete={onDelete}
+                  onSetColor={onSetColor}
+                />
+              )}
+            </div>
           </div>
         )}
 
@@ -231,8 +251,8 @@ function PanelTabs({ tab, onChange }: { tab: PanelTab; onChange: (t: PanelTab) =
         boxShadow: "inset 0 0 0 1px color-mix(in oklch, var(--border) 60%, transparent)",
       }}
     >
-      <TabPill active={tab === "saved"} onClick={() => onChange("saved")} label="Saved" />
       <TabPill active={tab === "adjust"} onClick={() => onChange("adjust")} label="Adjust" />
+      <TabPill active={tab === "saved"} onClick={() => onChange("saved")} label="Saved" />
     </div>
   );
 }
@@ -243,7 +263,7 @@ function TabPill({ active, onClick, label }: { active: boolean; onClick: () => v
       role="tab"
       aria-selected={active}
       onClick={onClick}
-      className="group relative flex-1 inline-flex items-center justify-center h-7 rounded-full px-3 text-[12px] font-semibold tracking-tight transition-[color,background,box-shadow,transform] duration-200 ease-[cubic-bezier(0.23,1,0.32,1)] active:scale-[0.97]"
+      className="group relative flex-1 inline-flex items-center justify-center h-8 rounded-full px-3 text-[12px] font-bold transition-all duration-200 ease-[cubic-bezier(0.23,1,0.32,1)] active:scale-[0.97] hover:scale-[1.02]"
       style={{
         background: active ? "var(--surface)" : "transparent",
         color: active ? "var(--text)" : "var(--text-muted)",
@@ -252,10 +272,16 @@ function TabPill({ active, onClick, label }: { active: boolean; onClick: () => v
           : "none",
       }}
       onMouseEnter={(e) => {
-        if (!active) e.currentTarget.style.color = "var(--text)";
+        if (!active) {
+          e.currentTarget.style.background = "color-mix(in oklch, var(--surface) 40%, transparent)";
+          e.currentTarget.style.color = "var(--text)";
+        }
       }}
       onMouseLeave={(e) => {
-        if (!active) e.currentTarget.style.color = "var(--text-muted)";
+        if (!active) {
+          e.currentTarget.style.background = "transparent";
+          e.currentTarget.style.color = "var(--text-muted)";
+        }
       }}
     >
       {label}
@@ -284,14 +310,6 @@ function SavedListView({
 }) {
   return (
     <div className="flex h-full flex-col">
-      <div className="px-4 pt-2 pb-2">
-        <span
-          className="text-[10px] font-bold uppercase tracking-[0.18em]"
-          style={{ color: "var(--text-muted)" }}
-        >
-          Saved
-        </span>
-      </div>
       <div className="flex-1 overflow-y-auto px-3 pb-3">
         {saved.length === 0 ? (
           <p className="px-3 py-6 text-[12px] leading-relaxed" style={{ color: "var(--text-muted)" }}>
@@ -381,14 +399,12 @@ function SavedRow({
 
   const hasColor = !!item.color;
   const bg = active
-    ? (hasColor ? "var(--accent)" : "var(--surface-muted)")
-    : (hasColor ? `color-mix(in oklch, ${item.color} 38%, var(--surface))` : "transparent");
+    ? (hasColor ? `color-mix(in oklch, ${item.color} 25%, var(--surface))` : "var(--surface-muted)")
+    : (hasColor ? `color-mix(in oklch, ${item.color} 15%, var(--surface))` : "transparent");
   const hoverBg = active
-    ? (hasColor ? "var(--accent)" : "var(--surface-muted)")
-    : (hasColor ? `color-mix(in oklch, ${item.color} 58%, var(--surface))` : "var(--surface-muted)");
-  const textColor = active 
-    ? (hasColor ? "var(--accent-text)" : "var(--text)") 
-    : "var(--text)";
+    ? (hasColor ? `color-mix(in oklch, ${item.color} 35%, var(--surface))` : "var(--surface-muted)")
+    : (hasColor ? `color-mix(in oklch, ${item.color} 25%, var(--surface))` : "var(--surface-muted)");
+  const textColor = active ? "var(--text)" : "var(--text)";
 
   return (
     <li>
@@ -397,6 +413,7 @@ function SavedRow({
         role="button"
         tabIndex={0}
         onClick={() => { if (editing || menuOpen) return; onLoad(); }}
+        onDoubleClick={startEdit}
         className={`group relative flex h-8 items-center gap-3 rounded-lg px-3 text-[13px] transition-[background-color,transform] duration-150 ease-[cubic-bezier(0.23,1,0.32,1)] active:scale-[0.985] ${editing ? "" : "cursor-pointer"}`}
         style={{ background: bg, color: textColor }}
         onMouseEnter={(e) => { if (!active) e.currentTarget.style.background = hoverBg; }}
@@ -442,12 +459,24 @@ function SavedRow({
                 }
                 setMenuOpen((v) => !v);
               }}
-              aria-label="More actions"
+              aria-label="Set color"
               aria-expanded={menuOpen}
-              className={`flex h-6 w-6 flex-none items-center justify-center rounded-lg transition-opacity duration-150 ${menuOpen || active ? "opacity-100" : "opacity-0 group-hover:opacity-100 focus-visible:opacity-100"} hover:bg-[color:var(--bg)]`}
-              style={{ color: textColor }}
+              className={`flex h-3.5 w-3.5 flex-none items-center justify-center rounded-full border border-black/10 transition-all duration-150 ${menuOpen || active ? "opacity-100" : "opacity-0 group-hover:opacity-100"} hover:scale-125 active:scale-95 shadow-sm mx-1`}
+              style={{ background: item.color ?? "transparent" }}
+              onMouseEnter={(e) => {
+                if (item.color) {
+                  e.currentTarget.style.background = `color-mix(in oklch, ${item.color} 40%, white)`;
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (item.color) {
+                  e.currentTarget.style.background = item.color;
+                }
+              }}
             >
-              <MoreHorizontalIcon size={14} />
+              {!item.color && (
+                <span aria-hidden className="absolute h-px w-2.5 rotate-45 rounded-full" style={{ background: textColor, opacity: 0.2 }} />
+              )}
             </button>
           </div>
         )}
@@ -460,58 +489,42 @@ function SavedRow({
           style={{ top: menuCoords.top, left: menuCoords.left, transform: "translateX(-100%)" }}
         >
           <div
-            role="menu"
-            className="min-w-[160px] rounded-xl border p-1 shadow-lg"
-            style={{ background: "var(--surface)", borderColor: "var(--border)", color: "var(--text)" }}
+            className="rounded-xl border p-2 shadow-lg"
+            style={{ background: "var(--surface)", borderColor: "var(--border)" }}
           >
-            <button
-              role="menuitem"
-              onClick={(e) => { e.stopPropagation(); startEdit(); }}
-              className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-[12px] font-medium transition-colors duration-150 ease-out hover:bg-[color:var(--bg)]"
-            >
-              <PencilEdit01Icon size={14} className="opacity-60" />
-              Rename
-            </button>
-            <button
-              role="menuitem"
-              onClick={(e) => { e.stopPropagation(); setMenuOpen(false); onDelete(); }}
-              className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-[12px] font-medium transition-colors duration-150 ease-out hover:bg-[color:var(--bg)]"
-            >
-              <Delete02Icon size={14} className="opacity-60" />
-              Delete
-            </button>
-
-            <div className="my-1 border-t" style={{ borderColor: "var(--border)" }} />
-
-            <div className="px-2 pb-1.5 pt-1">
-              <div className="mb-1.5 text-[9px] font-semibold uppercase tracking-[0.14em]" style={{ color: "var(--text-muted)" }}>
-                Color
-              </div>
-              <div className="flex flex-wrap items-center gap-1.5">
-                {PASTEL_COLORS.map((c) => {
-                  const selected = (item.color ?? null) === c.value;
-                  const isNone = c.value === null;
-                  return (
-                    <button
-                      key={c.name}
-                      role="menuitemradio"
-                      aria-checked={selected}
-                      aria-label={c.name}
-                      title={c.name}
-                      onClick={(e) => { e.stopPropagation(); onSetColor(c.value); }}
-                      className="relative flex h-4 w-4 items-center justify-center rounded-full border transition-transform duration-150 ease-out hover:scale-110 shadow-sm"
-                      style={{ background: c.value ?? "transparent", borderColor: c.value ?? "var(--border)" }}
-                    >
-                      {selected && (
-                        <Tick02Icon size={12} style={{ color: isNone ? "var(--text)" : "#444" }} />
-                      )}
-                      {isNone && !selected && (
-                        <span aria-hidden className="absolute h-px w-2.5 rotate-45 rounded-full" style={{ background: "var(--text-muted)" }} />
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
+            <div className="flex items-center gap-1.5 px-0.5">
+              {PASTEL_COLORS.map((c) => {
+                const selected = (item.color ?? null) === c.value;
+                const isNone = c.value === null;
+                return (
+                  <button
+                    key={c.name}
+                    role="button"
+                    aria-label={c.name}
+                    title={c.name}
+                    onClick={(e) => { e.stopPropagation(); onSetColor(c.value); setMenuOpen(false); }}
+                    className="relative flex h-4 w-4 items-center justify-center rounded-full border border-black/10 transition-all duration-150 ease-out hover:scale-125 shadow-sm"
+                    style={{ background: c.value ?? "transparent" }}
+                    onMouseEnter={(e) => {
+                      if (!isNone) {
+                        e.currentTarget.style.background = `color-mix(in oklch, ${c.value} 40%, white)`;
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (!isNone) {
+                        e.currentTarget.style.background = c.value!;
+                      }
+                    }}
+                  >
+                    {selected && (
+                      <Tick02Icon size={10} style={{ color: isNone ? "var(--text)" : "#444" }} />
+                    )}
+                    {isNone && !selected && (
+                      <span aria-hidden className="absolute h-px w-2.5 rotate-45 rounded-full" style={{ background: "var(--text-muted)" }} />
+                    )}
+                  </button>
+                );
+              })}
             </div>
           </div>
         </div>,
@@ -525,39 +538,26 @@ function SavedRow({
    Adjust tab
    ──────────────────────────────────────────────────────────── */
 
-function AdjustView({ values, onChange }: { values: Adjustments; onChange: (next: Adjustments) => void }) {
+function AdjustView({
+  values,
+  onChange,
+  roles,
+  isDefault,
+  onReset,
+}: {
+  values: Adjustments;
+  onChange: (next: Adjustments) => void;
+  roles: FontRole[];
+  isDefault: boolean;
+  onReset: () => void;
+}) {
   const setRole = (role: FontRole, next: RoleAdjustment) =>
     onChange({ ...values, [role]: next });
 
-  const isDefault = ROLES.every((r) => {
-    const v = values[r];
-    const d = DEFAULT_ADJUSTMENTS[r];
-    return v.fontSize === d.fontSize && v.lineHeight === d.lineHeight && v.letterSpacing === d.letterSpacing;
-  });
-
   return (
     <div className="h-full overflow-y-auto">
-      <div className="flex items-center justify-between px-5 pt-2 pb-1">
-        <span
-          className="text-[10px] font-bold uppercase tracking-[0.18em]"
-          style={{ color: "var(--text-muted)" }}
-        >
-          Adjust
-        </span>
-        <Tooltip label="Reset to defaults" direction="left">
-          <button
-            onClick={() => onChange(DEFAULT_ADJUSTMENTS)}
-            disabled={isDefault}
-            aria-label="Reset adjustments"
-            className="group inline-flex h-7 w-7 items-center justify-center rounded-lg transition-colors duration-150 ease-out hover:bg-[color:var(--bg)] disabled:opacity-30 disabled:hover:bg-transparent"
-            style={{ color: "var(--text-muted)" }}
-          >
-            <ReloadIcon size={14} className="transition-transform duration-500 group-hover:-rotate-180" />
-          </button>
-        </Tooltip>
-      </div>
-      <div className="flex flex-col gap-8 px-5 pb-10 pt-4">
-        {ROLES.map((role) => {
+      <div className="flex flex-col gap-10 px-5 pb-10 pt-2">
+        {roles.map((role, idx) => {
           const cfg = ROLE_CONFIG[role];
           const adj = values[role];
           return (
@@ -569,6 +569,9 @@ function AdjustView({ values, onChange }: { values: Adjustments; onChange: (next
               sizeMax={cfg.sizeMax}
               sizeStep={cfg.sizeStep}
               onChange={(next) => setRole(role, next)}
+              showReset={idx === 0}
+              isDefault={isDefault}
+              onReset={onReset}
             />
           );
         })}
@@ -584,6 +587,9 @@ function RoleGroup({
   sizeMax,
   sizeStep,
   onChange,
+  showReset,
+  isDefault,
+  onReset,
 }: {
   label: string;
   adj: RoleAdjustment;
@@ -591,19 +597,33 @@ function RoleGroup({
   sizeMax: number;
   sizeStep: number;
   onChange: (next: RoleAdjustment) => void;
+  showReset?: boolean;
+  isDefault?: boolean;
+  onReset?: () => void;
 }) {
   return (
-    <div className="group flex flex-col gap-5 py-2">
-      <div
-        className="flex items-center justify-between border-b pb-1"
-        style={{ borderColor: "color-mix(in oklch, var(--border) 40%, transparent)" }}
-      >
-        <span className="text-[12px] font-bold uppercase tracking-[0.14em]" style={{ color: "var(--text)" }}>
+    <div className="group flex flex-col gap-2.5 py-1">
+      <div className="flex items-center justify-between pb-0.5">
+        <span className="text-[11px] font-bold uppercase tracking-[0.14em]" style={{ color: "var(--text)" }}>
           {label}
         </span>
+        {showReset && !isDefault && onReset && (
+          <Tooltip label="Reset to defaults" direction="left">
+            <button
+              onClick={onReset}
+              className={`group ${RAIL_BTN_CLASS} !h-7 !w-7 active:scale-[0.92]`}
+              style={{ color: "var(--text-muted)" }}
+            >
+              <ArrowTurnBackwardIcon 
+                size={18} 
+                className="relative z-10 transition-transform duration-300 ease-[cubic-bezier(0.23,1,0.32,1)] group-hover:-translate-x-0.5" 
+              />
+            </button>
+          </Tooltip>
+        )}
       </div>
 
-      <div className="flex flex-col gap-5">
+      <div className="flex flex-col gap-2.5">
         <SliderRow
           label="Font size"
           value={adj.fontSize}
@@ -673,9 +693,9 @@ function SliderRow({
   };
 
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-col gap-1.5">
       <div className="flex items-center justify-between">
-        <span className="text-[12px] font-medium opacity-60" style={{ color: "var(--text)" }}>
+        <span className="text-[11px] font-medium opacity-60" style={{ color: "var(--text)" }}>
           {label}
         </span>
         <div>
@@ -689,7 +709,7 @@ function SliderRow({
                 if (e.key === "Enter") { e.preventDefault(); commit(); }
                 if (e.key === "Escape") setEditing(false);
               }}
-              className="w-12 rounded border px-1 py-0.5 text-center font-mono text-[11px] outline-none"
+              className="w-12 rounded border px-1 py-0.5 text-center font-mono text-[10px] outline-none"
               style={{
                 background: "var(--bg)",
                 borderColor: "var(--accent)",
@@ -699,7 +719,7 @@ function SliderRow({
           ) : (
             <button
               onClick={startEdit}
-              className="rounded px-1.5 py-0.5 font-mono text-[11px] tabular-nums transition-colors hover:bg-[color:var(--bg)]"
+              className="rounded px-1.5 py-0.5 font-mono text-[10px] tabular-nums transition-colors hover:bg-[color:var(--bg)]"
               style={{ color: "var(--text)" }}
             >
               {format(value)}
@@ -728,30 +748,31 @@ function SliderRow({
 function Footer({ open, onOpenSettings }: { open: boolean; onOpenSettings: () => void }) {
   return (
     <div
-      className={`mt-auto flex flex-col items-center pt-3 pb-4 ${open ? "px-3 border-t" : "px-2"}`}
+      className={`mt-auto flex flex-col items-center pt-2 pb-4 ${open ? "px-3" : "px-2"}`}
       style={{ borderColor: "var(--border)" }}
     >
       {open ? (
         <div className="flex w-full items-center gap-1">
-          <Tooltip label="Settings" shortcut="i" direction="right" className="flex-1">
+          <Tooltip label="Settings" shortcut="i" direction="right" className="flex-1 min-w-0">
             <button
               onClick={onOpenSettings}
               aria-label="Settings"
-              className="group flex flex-1 h-8 items-center justify-start gap-1.5 rounded-xl px-3 text-[12px] font-medium transition-colors duration-150 ease-out hover:bg-[color:var(--bg)]"
+              className="group flex w-full h-8 items-center justify-start gap-1.5 rounded-lg px-3 text-[12px] font-medium transition-colors duration-150 ease-out hover:bg-[color:var(--bg)]"
               style={{ color: "var(--text-muted)" }}
             >
               <Settings01Icon size={18} className="transition-transform duration-300 ease-[cubic-bezier(0.23,1,0.32,1)] group-hover:rotate-45" />
               Settings
             </button>
-            </Tooltip>
-            <div className="flex items-center gap-0.5 flex-shrink-0">
+          </Tooltip>
+          <div className="flex items-center gap-0.5 flex-shrink-0 ml-1">
             <SocialLink href="https://www.linkedin.com/in/leonmatos" label="LinkedIn">
               <Linkedin01Icon size={18} />
             </SocialLink>
             <SocialLink href="https://github.com/Eligiond" label="GitHub">
               <GithubIcon size={18} />
             </SocialLink>
-            </div>        </div>
+          </div>
+        </div>
       ) : (
         <Tooltip label="Settings" shortcut="i" direction="right">
           <button
@@ -783,8 +804,10 @@ function SocialLink({
       target="_blank"
       rel="noreferrer"
       aria-label={label}
-      className="rounded-lg p-1.5 transition-colors duration-150 ease-out hover:bg-[color:var(--bg)]"
+      className="group rounded-lg p-1.5 transition-all duration-150 ease-out hover:bg-[color:var(--bg)] hover:scale-110 active:scale-95"
       style={{ color: "var(--text-muted)" }}
+      onMouseEnter={(e) => { e.currentTarget.style.color = "var(--text)"; }}
+      onMouseLeave={(e) => { e.currentTarget.style.color = "var(--text-muted)"; }}
     >
       {children}
     </a>

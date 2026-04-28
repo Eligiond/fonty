@@ -8,6 +8,7 @@ export type ColorPalette = {
   stripe1: string;
   stripe2: string;
   stripe3: string;
+  stripe4: string;
   accent: string;
   accentText: string;
 };
@@ -37,6 +38,7 @@ export const THEMES = [
       stripe1: "#ffffff",
       stripe2: "#f5f5f5",
       stripe3: "#ededed",
+      stripe4: "#e3e3e3",
       accent: "#0a0a0a",
       accentText: "#ffffff",
     },
@@ -50,6 +52,7 @@ export const THEMES = [
       stripe1: "#050505",
       stripe2: "#0f0f0f",
       stripe3: "#181818",
+      stripe4: "#1f1f1f",
       accent: "#f5f5f5",
       accentText: "#050505",
     },
@@ -68,6 +71,7 @@ export const THEMES = [
       stripe1: "#f3f5f8",
       stripe2: "#e7ecf2",
       stripe3: "#dae1e9",
+      stripe4: "#ccd5e0",
       accent: "#171c24",
       accentText: "#f3f5f8",
     },
@@ -81,6 +85,7 @@ export const THEMES = [
       stripe1: "#080a0e",
       stripe2: "#0d1016",
       stripe3: "#13171e",
+      stripe4: "#1a1f28",
       accent: "#e7ecf2",
       accentText: "#080a0e",
     },
@@ -99,6 +104,7 @@ export const THEMES = [
       stripe1: "#f5f7f2",
       stripe2: "#e9eee3",
       stripe3: "#dde4d4",
+      stripe4: "#d0d9c5",
       accent: "#1c2118",
       accentText: "#f5f7f2",
     },
@@ -112,6 +118,7 @@ export const THEMES = [
       stripe1: "#0e110d",
       stripe2: "#131812",
       stripe3: "#1a2018",
+      stripe4: "#21281f",
       accent: "#e9eee3",
       accentText: "#0e110d",
     },
@@ -133,6 +140,7 @@ export function paletteToCssVars(p: ColorPalette): React.CSSProperties {
     ["--stripe-1" as string]: p.stripe1,
     ["--stripe-2" as string]: p.stripe2,
     ["--stripe-3" as string]: p.stripe3,
+    ["--stripe-4" as string]: p.stripe4,
     ["--accent" as string]: p.accent,
     ["--accent-text" as string]: p.accentText,
   } as React.CSSProperties;

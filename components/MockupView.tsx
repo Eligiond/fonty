@@ -1,13 +1,50 @@
 "use client";
 
-import { cssFamily, type FontPairing, type FontRole } from "@/lib/fonts";
+import { cssFamily, type FontPairing, type FontRole, type FontSlot, MIN_SLOTS, MAX_SLOTS } from "@/lib/fonts";
 import EditableText from "@/components/EditableText";
 import IconButton from "@/components/IconButton";
+import { Tooltip } from "@/components/Tooltip";
 import type { Adjustments } from "@/components/SidePanel";
-import { SquareLock02Icon, SquareUnlock02Icon, Copy01Icon, Tick02Icon } from "@hugeicons/react";
+import {
+  SquareLock02Icon,
+  SquareUnlock02Icon,
+  Copy01Icon,
+  Tick02Icon,
+  Cancel01Icon,
+  PlusSignIcon,
+  DragDropVerticalIcon,
+} from "@hugeicons/react";
 import { useRef, useState } from "react";
 
 export type Texts = Record<FontRole, string>;
+
+const ROLE_LABEL: Record<FontRole, string> = {
+  heading: "H1 · Heading",
+  subheading: "H3 · Subheading",
+  body: "P · Body",
+  caption: "C · Caption",
+};
+
+const ROLE_FONT_SIZE_SCALE: Record<FontRole, number> = {
+  heading: 1.2,
+  subheading: 1.0,
+  body: 1.0,
+  caption: 1.0,
+};
+
+const ROLE_LINE_HEIGHT: Record<FontRole, number> = {
+  heading: 1.1,
+  subheading: 1.4,
+  body: 1.6,
+  caption: 1.4,
+};
+
+const ROLE_WEIGHT: Record<FontRole, string> = {
+  heading: "600",
+  subheading: "500",
+  body: "400",
+  caption: "500",
+};
 
 type Props = {
   pairing: FontPairing;
@@ -20,6 +57,8 @@ type Props = {
   setOffsets: (v: any) => void;
   widths: Record<string, number>;
   setWidths: (v: any) => void;
+  onAddSlot: () => void;
+  onRemoveSlot: (role: FontRole) => void;
 };
 
 const DEFAULT_FRACTION = 0.66;
@@ -32,11 +71,17 @@ export default function MockupView({
   adjustments,
   locks,
   onToggleLock,
-  offsets = { heading: 0, subheading: 0, body: 0 },
+  offsets = {},
   setOffsets,
-  widths = { heading: DEFAULT_FRACTION, subheading: DEFAULT_FRACTION, body: DEFAULT_FRACTION },
+  widths = {},
   setWidths,
+  onAddSlot,
+  onRemoveSlot,
 }: Props) {
+  const slots = pairing.slots;
+  const canAdd = slots.length < MAX_SLOTS;
+  const canRemove = slots.length > MIN_SLOTS;
+
   const updateOffset = (role: string, dy: number) => {
     setOffsets((prev: any) => ({ ...prev, [role]: (prev?.[role] ?? 0) + dy }));
   };
@@ -57,29 +102,16 @@ export default function MockupView({
     });
   };
 
-  const headingStyle: React.CSSProperties = {
-    fontFamily: cssFamily(pairing.heading),
-    fontSize: `${adjustments.heading.fontSize * 1.2}px`,
-    lineHeight: 1.1 * adjustments.heading.lineHeight,
-    letterSpacing: `${adjustments.heading.letterSpacing}em`,
-    fontWeight: "600",
-    color: "var(--text)",
-  };
-  const subStyle: React.CSSProperties = {
-    fontFamily: cssFamily(pairing.subheading),
-    fontSize: `${adjustments.subheading.fontSize}px`,
-    lineHeight: 1.4 * adjustments.subheading.lineHeight,
-    letterSpacing: `${adjustments.subheading.letterSpacing}em`,
-    fontWeight: "500",
-    color: "var(--text)",
-  };
-  const bodyStyle: React.CSSProperties = {
-    fontFamily: cssFamily(pairing.body),
-    fontSize: `${adjustments.body.fontSize}px`,
-    lineHeight: 1.6 * adjustments.body.lineHeight,
-    letterSpacing: `${adjustments.body.letterSpacing}em`,
-    fontWeight: "400",
-    color: "var(--text)",
+  const buildStyle = (slot: FontSlot): React.CSSProperties => {
+    const adj = adjustments[slot.role];
+    return {
+      fontFamily: cssFamily(slot.family),
+      fontSize: `${adj.fontSize * ROLE_FONT_SIZE_SCALE[slot.role]}px`,
+      lineHeight: ROLE_LINE_HEIGHT[slot.role] * adj.lineHeight,
+      letterSpacing: `${adj.letterSpacing}em`,
+      fontWeight: ROLE_WEIGHT[slot.role],
+      color: "var(--text)",
+    };
   };
 
   return (
@@ -88,56 +120,28 @@ export default function MockupView({
       style={{ background: "var(--bg)", color: "var(--text)" }}
     >
       <div className="w-full px-12 flex flex-col flex-1 py-32 md:py-48 gap-16">
-        
-        {/* Heading Block */}
-        <FontBlock
-          role="heading"
-          label="H1 · Heading"
-          family={pairing.heading}
-          locked={locks.heading}
-          onToggleLock={() => onToggleLock("heading")}
-          text={texts.heading}
-          onTextChange={(v) => onTextChange("heading", v)}
-          style={headingStyle}
-          className="tracking-tighter"
-          offset={offsets?.heading ?? 0}
-          widthFraction={widths?.heading ?? DEFAULT_FRACTION}
-          onDragY={(dy) => updateOffset("heading", dy)}
-          onDragW={(dw, parentW, chromeW) => updateWidthFraction("heading", dw, parentW, chromeW)}
-        />
-
-        {/* Subheading Block */}
-        <FontBlock
-          role="subheading"
-          label="H3 · Subheading"
-          family={pairing.subheading}
-          locked={locks.subheading}
-          onToggleLock={() => onToggleLock("subheading")}
-          text={texts.subheading}
-          onTextChange={(v) => onTextChange("subheading", v)}
-          style={subStyle}
-          offset={offsets?.subheading ?? 0}
-          widthFraction={widths?.subheading ?? DEFAULT_FRACTION}
-          onDragY={(dy) => updateOffset("subheading", dy)}
-          onDragW={(dw, parentW, chromeW) => updateWidthFraction("subheading", dw, parentW, chromeW)}
-        />
-
-        {/* Body Block */}
-        <FontBlock
-          role="body"
-          label="P · Body"
-          family={pairing.body}
-          locked={locks.body}
-          onToggleLock={() => onToggleLock("body")}
-          text={texts.body}
-          onTextChange={(v) => onTextChange("body", v)}
-          style={bodyStyle}
-          offset={offsets?.body ?? 0}
-          widthFraction={widths?.body ?? DEFAULT_FRACTION}
-          onDragY={(dy) => updateOffset("body", dy)}
-          onDragW={(dw, parentW, chromeW) => updateWidthFraction("body", dw, parentW, chromeW)}
-        />
-
+        {slots.map((slot, idx) => (
+          <FontBlock
+            key={slot.role}
+            slot={slot}
+            label={ROLE_LABEL[slot.role]}
+            locked={locks[slot.role]}
+            onToggleLock={() => onToggleLock(slot.role)}
+            text={texts[slot.role]}
+            onTextChange={(v) => onTextChange(slot.role, v)}
+            style={buildStyle(slot)}
+            className={slot.role === "heading" ? "tracking-tighter" : ""}
+            offset={offsets?.[slot.role] ?? 0}
+            widthFraction={widths?.[slot.role] ?? DEFAULT_FRACTION}
+            onDragY={(dy) => updateOffset(slot.role, dy)}
+            onDragW={(dw, parentW, chromeW) => updateWidthFraction(slot.role, dw, parentW, chromeW)}
+            canRemove={canRemove}
+            onRemove={() => onRemoveSlot(slot.role)}
+            canAdd={canAdd}
+            isLast={idx === slots.length - 1}
+            onAddAfter={onAddSlot}
+          />
+        ))}
       </div>
     </div>
   );
@@ -148,12 +152,26 @@ const HANDLE_BUTTON = 36;
 const HANDLE_INFO_MIN_GAP = 24;
 
 function FontBlock({
-  role, label, family, locked, onToggleLock, text, onTextChange, style, className = "",
-  offset, widthFraction, onDragY, onDragW
+  slot,
+  label,
+  locked,
+  onToggleLock,
+  text,
+  onTextChange,
+  style,
+  className = "",
+  offset,
+  widthFraction,
+  onDragY,
+  onDragW,
+  canRemove,
+  onRemove,
+  canAdd,
+  isLast,
+  onAddAfter,
 }: {
-  role: FontRole;
+  slot: FontSlot;
   label: string;
-  family: string;
   locked: boolean;
   onToggleLock: () => void;
   text: string;
@@ -164,6 +182,11 @@ function FontBlock({
   widthFraction: number;
   onDragY: (dy: number) => void;
   onDragW: (deltaPx: number, parentInnerWidth: number, chromeWidth: number) => void;
+  canRemove: boolean;
+  onRemove: () => void;
+  canAdd: boolean;
+  isLast: boolean;
+  onAddAfter: () => void;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const infoRef = useRef<HTMLElement>(null);
@@ -195,8 +218,6 @@ function FontBlock({
     window.addEventListener("mouseup", onUp);
   };
 
-  // Reserve space on the right for the chrome (handle + spacer + info aside).
-  // The handle+spacer take ~76px, the info aside is ~228px → ~304px reserved.
   const CHROME_RESERVE_PX = 320;
 
   return (
@@ -205,7 +226,7 @@ function FontBlock({
       className="group relative flex items-center w-full"
       style={{ transform: `translateY(${offset}px)` }}
     >
-      {/* Specimen Column — width is a fraction of the parent so it reflows when the panel toggles */}
+      {/* Specimen Column */}
       <div
         className="relative border-r-2 border-transparent transition-[background-color,border-color] duration-300 group-hover:border-[var(--border)] hover:!border-[var(--accent)] flex-shrink-0"
         style={{
@@ -225,29 +246,53 @@ function FontBlock({
           style={style}
         />
 
-        {/* Invisible Resize Trigger Area */}
         <div
           onMouseDown={handleMouseDownW}
           className="absolute -right-2 top-0 bottom-0 w-4 cursor-ew-resize z-10"
         />
+
+        {/* Hover-revealed "+" between this block and the next — centered to specimen column */}
+        {canAdd && !isLast && (
+          <div className="pointer-events-none absolute left-0 right-0 -bottom-10 z-30 flex h-8 items-center justify-center translate-y-2">
+            <div className="pointer-events-auto opacity-0 transition-opacity duration-200 group-hover:opacity-100">
+              <IconButton onClick={onAddAfter} ariaLabel="Add font" title="Add font">
+                <PlusSignIcon size={18} />
+              </IconButton>
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* Drag Handle - Pinned at fixed gap from text-box right edge */}
-      <div className="flex-shrink-0" style={{ paddingLeft: `${HANDLE_GAP}px` }}>
+      {/* Remove button — between specimen and drag handle */}
+      {canRemove && (
+        <div
+          className="flex-shrink-0 opacity-0 transition-opacity duration-200 group-hover:opacity-100"
+          style={{ paddingLeft: `${HANDLE_GAP}px` }}
+        >
+          <Tooltip label="Remove font" direction="top">
+            <IconButton onClick={onRemove} ariaLabel="Remove font" title="Remove font">
+              <Cancel01Icon size={18} />
+            </IconButton>
+          </Tooltip>
+        </div>
+      )}
+
+      {/* Y-drag handle */}
+      <div className="flex-shrink-0" style={{ paddingLeft: `8px` }}>
         <button
           onMouseDown={handleMouseDownY}
           className="p-2 rounded-lg opacity-0 group-hover:opacity-20 hover:!opacity-100 hover:bg-[var(--surface-muted)] transition-all cursor-pointer active:cursor-grabbing active:scale-95"
           style={{ color: "var(--text)" }}
           title="Drag to reposition"
         >
-          <NineDotsIcon />
+          <DragDropVerticalIcon size={18} />
         </button>
       </div>
 
       {/* Flexible spacer pushes info to the right */}
       <div className="flex-1" style={{ minWidth: `${HANDLE_INFO_MIN_GAP}px` }} />
 
-      {/* Font Information - Pinned right, fixed column width for cross-row alignment */}
+      {/* Font Information */}
       <aside ref={infoRef} className="flex flex-shrink-0 items-center gap-3 text-right">
         <div className="w-[140px]">
           <div
@@ -258,33 +303,17 @@ function FontBlock({
           </div>
           <div
             className="mt-0.5 truncate text-[14px] font-medium"
-            style={{ fontFamily: cssFamily(family), color: "var(--text)" }}
+            style={{ fontFamily: cssFamily(slot.family), color: "var(--text)" }}
           >
-            {family}
+            {slot.family}
           </div>
         </div>
         <div className="flex flex-shrink-0 items-center gap-1.5">
-          <CopyButton family={family} role={role} label={label} locked={locked} />
+          <CopyButton family={slot.family} role={slot.role} label={label} locked={locked} />
           <LockButton locked={locked} onToggle={onToggleLock} />
         </div>
       </aside>
     </div>
-  );
-}
-
-function NineDotsIcon() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor" className="opacity-100">
-      <circle cx="2" cy="2" r="1.5" />
-      <circle cx="7" cy="2" r="1.5" />
-      <circle cx="12" cy="2" r="1.5" />
-      <circle cx="2" cy="7" r="1.5" />
-      <circle cx="7" cy="7" r="1.5" />
-      <circle cx="12" cy="7" r="1.5" />
-      <circle cx="2" cy="12" r="1.5" />
-      <circle cx="7" cy="12" r="1.5" />
-      <circle cx="12" cy="12" r="1.5" />
-    </svg>
   );
 }
 

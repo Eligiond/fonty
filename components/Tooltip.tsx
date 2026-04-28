@@ -30,12 +30,14 @@ export function Tooltip({
   children,
   delay = 450,
   direction = "right",
+  className = "inline-flex",
 }: {
   shortcut?: string;
   label?: string;
   children: ReactNode;
   delay?: number;
   direction?: "left" | "right" | "top" | "bottom";
+  className?: string;
 }) {
   const [mounted, setMounted] = useState(false);
   const [visible, setVisible] = useState(false);
@@ -117,7 +119,7 @@ export function Tooltip({
         onMouseLeave={handleLeave}
         onFocus={handleEnter}
         onBlur={handleLeave}
-        className="inline-flex"
+        className={className}
       >
         {children}
       </span>

@@ -140,7 +140,7 @@ export default function SettingsPanel({
 
         <footer className="border-t bg-[color:var(--surface-muted)] px-6 py-4 text-center" style={{ borderColor: "var(--border)" }}>
            <p className="text-[11px] font-medium opacity-40">
-             Fonty v0.2.0 · Professional Typographic Workspace
+             Fontly v0.2.0 · Professional Typographic Workspace
            </p>
         </footer>
       </div>

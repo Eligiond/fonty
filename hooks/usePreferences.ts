@@ -16,7 +16,7 @@ export function usePreferences() {
   const [panelOpen, setPanelOpen] = useState(true);
   const [panelTab, setPanelTab] = useState<PanelTab>("adjust");
   const [panelWidth, setPanelWidth] = useState(PANEL_DEFAULT);
-  const [viewMode, setViewMode] = useState<ViewMode>("vertical");
+  const [viewMode, setViewMode] = useState<ViewMode>("horizontal");
   const [mockupOffsets, setMockupOffsets] = useState<Record<string, number>>({
     heading: 0,
     subheading: 0,
@@ -41,6 +41,10 @@ export function usePreferences() {
         }
         if (typeof prefs.panelWidth === "number") {
           setPanelWidth(Math.max(PANEL_MIN, Math.min(PANEL_MAX, prefs.panelWidth)));
+        } else {
+          // Default to the height of a standard stripe in horizontal view: (H - pt-8) / 4.15
+          const calculatedWidth = Math.round((window.innerHeight - 32) / 4.15);
+          setPanelWidth(Math.max(PANEL_MIN, Math.min(PANEL_MAX, calculatedWidth)));
         }
         const validModes: ViewMode[] = ["vertical", "horizontal", "scroll"];
         if (prefs.viewMode && validModes.includes(prefs.viewMode)) {

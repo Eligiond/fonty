@@ -1,8 +1,32 @@
 import { useState, useEffect } from "react";
-import type { FontPairing } from "@/lib/fonts";
+import type { FontPairing, FontSlot } from "@/lib/fonts";
 import type { SavedItem } from "@/components/SidePanel";
 
 const STORAGE_KEY = "fonty:saved";
+
+// Coerce legacy {heading,subheading,body} snapshots into the new slots-based shape.
+function migrateSnapshot(snap: any): FontPairing | null {
+  if (!snap || typeof snap !== "object") return null;
+  if (Array.isArray(snap.slots)) {
+    return {
+      id: snap.id ?? `migrated-${Date.now()}`,
+      vibe: snap.vibe ?? "Classic",
+      slots: snap.slots as FontSlot[],
+    };
+  }
+  if (snap.heading && snap.subheading && snap.body) {
+    return {
+      id: snap.id ?? `migrated-${Date.now()}`,
+      vibe: snap.vibe ?? "Classic",
+      slots: [
+        { role: "heading", family: String(snap.heading) },
+        { role: "subheading", family: String(snap.subheading) },
+        { role: "body", family: String(snap.body) },
+      ],
+    };
+  }
+  return null;
+}
 
 export function useSavedPairings(pairing: FontPairing) {
   const [saved, setSaved] = useState<SavedItem[]>([]);
@@ -10,24 +34,32 @@ export function useSavedPairings(pairing: FontPairing) {
   const [copied, setCopied] = useState(false);
   const [justSaved, setJustSaved] = useState(false);
 
-  // Hydrate
   useEffect(() => {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (raw) {
         const parsed = JSON.parse(raw);
-        const migrate = (nodes: any[]): SavedItem[] => {
+        const flatten = (nodes: any[]): SavedItem[] => {
           const items: SavedItem[] = [];
           for (const n of nodes) {
             if (n.type === "item") {
-              items.push({ ...n, timestamp: n.timestamp || Date.now() } as SavedItem);
+              const snapshot = migrateSnapshot(n.snapshot);
+              if (!snapshot) continue;
+              items.push({
+                type: "item",
+                id: n.id,
+                name: n.name,
+                snapshot,
+                timestamp: n.timestamp || Date.now(),
+                color: n.color ?? null,
+              });
             } else if (n.type === "folder" && Array.isArray(n.items)) {
-              items.push(...migrate(n.items));
+              items.push(...flatten(n.items));
             }
           }
           return items;
         };
-        setSaved(migrate(parsed));
+        setSaved(flatten(parsed));
       }
     } catch {}
   }, []);
@@ -45,12 +77,12 @@ export function useSavedPairings(pairing: FontPairing) {
         ? crypto.randomUUID()
         : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
     
-    const item: SavedItem = { 
-        type: "item", 
-        id, 
-        name, 
-        snapshot: { ...pairing },
-        timestamp: Date.now()
+    const item: SavedItem = {
+        type: "item",
+        id,
+        name,
+        snapshot: { ...pairing, slots: pairing.slots.map((s) => ({ ...s })) },
+        timestamp: Date.now(),
     };
     persistSaved([item, ...saved]);
     setActiveSavedId(id);

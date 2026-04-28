@@ -3,7 +3,11 @@
 import { useCallback, useMemo, useState } from "react";
 import {
   FONT_PAIRINGS,
-  pickRandomPairing,
+  rollPairing,
+  pickFamilyForRole,
+  buildUrlForFamilies,
+  MAX_SLOTS,
+  MIN_SLOTS,
   type FontPairing,
   type FontRole,
 } from "@/lib/fonts";
@@ -28,18 +32,44 @@ type LockState = Record<FontRole, boolean>;
 
 const DEFAULT_TEXTS: Texts = {
   heading: "Find font pairings that give your product character.",
-  subheading: "Fonty provides design teams with an intentional system for typography and pairing, ensuring every product interface speaks with clarity and soul.",
-  body: "Typography is intentional because it's not about product, but rather about the UX/UI experience, of which 50% is just typeset. Fonty keeps your visual language consistent from the marketing site to the production app. Set your tokens once and every team - engineering, design, content - pulls from the same source of truth.",
+  subheading: "Fontly delivers an intentional typography system, giving every single product interface clarity and soul.",
+  body: "I built Fontly to visually test fonts for my startup’s landing page. It’s for designers, devs, or anyone curious enough to explore pairings until they find the right fit. Fontly ensures combinations work together from site to product without the design getting messy.",
+  caption: "Browse (or spam the space bar for fun!) through production-ready font pairings and find what best fits your project! Have a feature req? Reach out!",
 };
 
 export default function Page() {
   const [pairing, setPairing] = useState<FontPairing>(FONT_PAIRINGS[0]);
+  const [buffer, setBuffer] = useState<FontPairing[]>([]);
   const [locks, setLocks] = useState<LockState>({
     heading: false,
     subheading: false,
     body: false,
+    caption: false,
   });
-  
+
+  // Keep buffer filled to 10 items
+  useEffect(() => {
+    if (buffer.length < 10) {
+      setBuffer((prev) => {
+        const needed = 10 - prev.length;
+        const nextBatch: FontPairing[] = [];
+        let currentSeed = prev.length > 0 ? prev[prev.length - 1] : pairing;
+        
+        for (let i = 0; i < needed; i++) {
+          const next = rollPairing(currentSeed, locks);
+          nextBatch.push(next);
+          currentSeed = next;
+        }
+        return [...prev, ...nextBatch];
+      });
+    }
+  }, [buffer.length, pairing, locks]);
+
+  // Clear buffer on lock changes so next rolls are valid
+  useEffect(() => {
+    setBuffer([]);
+  }, [locks]);
+
   const {
     themeId, setThemeId,
     isDark, setIsDark,
@@ -67,20 +97,64 @@ export default function Page() {
   const [adjustments, setAdjustments] = useState<Adjustments>(DEFAULT_ADJUSTMENTS);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [saveModalOpen, setSaveModalOpen] = useState(false);
+  const autoCloseRef = useRef(false);
+  const loadedFontsRef = useRef<Set<string>>(new Set());
 
+  const lastRollTime = useRef(0);
   const roll = useCallback(() => {
-    setPairing((current) => {
-      const next = pickRandomPairing(current.id);
-      return {
-        id: next.id,
-        vibe: next.vibe,
-        heading: locks.heading ? current.heading : next.heading,
-        subheading: locks.subheading ? current.subheading : next.subheading,
-        body: locks.body ? current.body : next.body,
-      };
-    });
+    const now = Date.now();
+    if (now - lastRollTime.current < 200) return;
+    lastRollTime.current = now;
+    
+    if (buffer.length > 0) {
+      const next = buffer[0];
+      setPairing(next);
+      setBuffer((prev) => prev.slice(1));
+    } else {
+      // Emergency fallback if buffer is empty
+      setPairing((current) => rollPairing(current, locks));
+    }
+    
     setActiveSavedId(null);
-  }, [locks, setActiveSavedId]);
+  }, [buffer, locks, setActiveSavedId]);
+
+  const addSlot = useCallback(() => {
+    setPairing((current) => {
+      if (current.slots.length >= MAX_SLOTS) return current;
+      const present = new Set(current.slots.map((s) => s.role));
+      const order: FontRole[] = ["caption", "subheading", "body", "heading"];
+      const role = order.find((r) => !present.has(r));
+      if (!role) return current;
+      const used = current.slots.map((s) => s.family);
+      const family = pickFamilyForRole(role, used);
+      return { ...current, slots: [...current.slots, { role, family }] };
+    });
+  }, []);
+
+  const removeSlot = useCallback((role: FontRole) => {
+    setPairing((current) => {
+      if (current.slots.length <= MIN_SLOTS) return current;
+      return { ...current, slots: current.slots.filter((s) => s.role !== role) };
+    });
+  }, []);
+
+  const reorderSlots = useCallback((fromIdx: number, toIdx: number) => {
+    setPairing((current) => {
+      if (
+        fromIdx === toIdx ||
+        fromIdx < 0 ||
+        toIdx < 0 ||
+        fromIdx >= current.slots.length ||
+        toIdx >= current.slots.length
+      ) {
+        return current;
+      }
+      const next = current.slots.slice();
+      const [moved] = next.splice(fromIdx, 1);
+      next.splice(toIdx, 0, moved);
+      return { ...current, slots: next };
+    });
+  }, []);
 
   useKeyboardShortcuts({ roll, setPanelOpen, setSettingsOpen });
 
@@ -104,6 +178,36 @@ export default function Page() {
     [saved, activeSavedId],
   );
 
+  const [persistentColor, setPersistentColor] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (activeColor) setPersistentColor(activeColor);
+  }, [activeColor]);
+
+  // Dynamic Font Loading
+  useEffect(() => {
+    const familiesNeeded = new Set<string>();
+    // Current pairing
+    pairing.slots.forEach(s => familiesNeeded.add(s.family));
+    // Pre-load buffer
+    buffer.forEach(p => p.slots.forEach(s => familiesNeeded.add(s.family)));
+    // Saved pairings
+    saved.forEach(item => item.snapshot.slots.forEach(s => familiesNeeded.add(s.family)));
+
+    const newFamilies = Array.from(familiesNeeded).filter(f => !loadedFontsRef.current.has(f));
+    if (newFamilies.length === 0) return;
+
+    // Inject individual links for each new family
+    newFamilies.forEach(family => {
+      const url = buildUrlForFamilies([family]);
+      const link = document.createElement("link");
+      link.rel = "stylesheet";
+      link.href = url;
+      document.head.appendChild(link);
+      loadedFontsRef.current.add(family);
+    });
+  }, [pairing, buffer, saved]);
+
   const theme = getTheme(themeId);
   const palette = isDark ? theme.dark : theme.light;
   const themeStyle = paletteToCssVars(palette);
@@ -117,9 +221,16 @@ export default function Page() {
         <div className="absolute inset-x-0 top-0 z-20">
           <TopBar
             viewMode={viewMode}
-            setViewMode={setViewMode}
+            setViewMode={(newMode) => {
+              if ((newMode === "vertical" || newMode === "scroll") && !autoCloseRef.current) {
+                setPanelOpen(false);
+                autoCloseRef.current = true;
+              }
+              setViewMode(newMode);
+            }}
             vibe={pairing.vibe}
             isDark={isDark}
+            onRoll={roll}
             onSave={() => setSaveModalOpen(true)}
             justSaved={justSaved}
             onCopy={async () => {
@@ -131,7 +242,7 @@ export default function Page() {
               } catch {}
             }}
             copied={copied}
-            activeColor={activeColor}
+            activeColor={persistentColor}
           />
         </div>
         <div className="absolute inset-0">
@@ -147,6 +258,8 @@ export default function Page() {
               setOffsets={setMockupOffsets}
               widths={mockupWidths}
               setWidths={setMockupWidths}
+              onAddSlot={addSlot}
+              onRemoveSlot={removeSlot}
             />
           ) : (
             <GenerateView
@@ -157,6 +270,10 @@ export default function Page() {
               onTextChange={onTextChange}
               adjustments={adjustments}
               viewMode={viewMode}
+              onAddSlot={addSlot}
+              onRemoveSlot={removeSlot}
+              onReorderSlots={reorderSlots}
+              setPanelOpen={setPanelOpen}
             />
           )}
         </div>
@@ -176,6 +293,7 @@ export default function Page() {
         onSetColor={setSavedColor}
         values={adjustments}
         onChange={setAdjustments}
+        roles={pairing.slots.map((s) => s.role)}
         onOpenSettings={() => setSettingsOpen(true)}
       />
 
@@ -280,6 +398,12 @@ function SaveModal({ onConfirm, onCancel, defaultName }: {
 function buildTailwindConfig(p: FontPairing): string {
   const fam = (name: string) => `['${name}', 'system-ui', 'sans-serif']`;
   const fontUrl = (name: string) => name.replace(/\s+/g, "+");
+  const fontFamilyEntries = p.slots
+    .map((s) => `        ${s.role.padEnd(11, " ")} ${fam(s.family)},`)
+    .join("\n");
+  const googleFamilies = p.slots
+    .map((s) => `family=${fontUrl(s.family)}:wght@400;500;600;700`)
+    .join("&");
   return `// tailwind.config.ts
 import type { Config } from "tailwindcss";
 
@@ -288,15 +412,13 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        heading:    ${fam(p.heading)},
-        subheading: ${fam(p.subheading)},
-        body:       ${fam(p.body)},
+${fontFamilyEntries}
       },
     },
   },
 } satisfies Config;
 
 // Load via Google Fonts:
-// https://fonts.googleapis.com/css2?family=${fontUrl(p.heading)}:wght@400;600;700&family=${fontUrl(p.subheading)}:wght@400;500;600&family=${fontUrl(p.body)}:wght@400;500&display=swap
+// https://fonts.googleapis.com/css2?${googleFamilies}&display=swap
 `;
 }
