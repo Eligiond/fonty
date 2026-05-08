@@ -33,8 +33,8 @@ type LockState = Record<FontRole, boolean>;
 
 const DEFAULT_TEXTS: Texts = {
   heading: "Find font pairings that give your product character.",
-  subheading: "Fontly delivers an intentional typography system, giving every single product interface clarity and soul.",
-  body: "I built Fontly to visually test fonts for my startup’s landing page. It’s for designers, devs, or anyone curious enough to explore pairings until they find the right fit. Fontly ensures combinations work together from site to product without the design getting messy.",
+  subheading: "Fontfun delivers an intentional typography system, giving every single product interface clarity and soul.",
+  body: "I built Fontfun to visually test fonts for my startup’s landing page. It’s for designers, devs, or anyone curious enough to explore pairings until they find the right fit. Fontfun ensures combinations work together from site to product without the design getting messy.",
   caption: "Browse (or spam the space bar for fun!) through production-ready font pairings and find what best fits your project! Have a feature req? Reach out!",
 };
 
@@ -103,22 +103,45 @@ export default function Page() {
   const [prefetchedInDom, setPrefetchedInDom] = useState<Set<string>>(new Set());
 
   const lastRollTime = useRef(0);
+  const isRollingRef = useRef(false);
+  const readyFontsRef = useRef<Set<string>>(new Set());
+
   const roll = useCallback(() => {
     const now = Date.now();
     if (now - lastRollTime.current < 80) return;
+    if (isRollingRef.current) return;
     lastRollTime.current = now;
-    
-    if (buffer.length > 0) {
-      const next = buffer[0];
+    isRollingRef.current = true;
+
+    const isFromBuffer = buffer.length > 0;
+    const next = isFromBuffer ? buffer[0] : rollPairing(pairing, locks);
+    const families = next.slots.map((s) => s.family);
+
+    const commit = () => {
       setPairing(next);
-      setBuffer((prev) => prev.slice(1));
-    } else {
-      // Emergency fallback if buffer is empty
-      setPairing((current) => rollPairing(current, locks));
+      if (isFromBuffer) setBuffer((prev) => prev.slice(1));
+      setActiveSavedId(null);
+      isRollingRef.current = false;
+    };
+
+    // Skip wait entirely if every font is confirmed downloaded
+    if (families.every((f) => readyFontsRef.current.has(f))) {
+      commit();
+      return;
     }
-    
-    setActiveSavedId(null);
-  }, [buffer, locks, setActiveSavedId]);
+
+    // Load both regular and bold weights so headings don't flash
+    const SAMPLE = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+    const fontReady = Promise.all(
+      families.flatMap((f) => [
+        document.fonts.load(`400 16px "${f}"`, SAMPLE).catch(() => {}),
+        document.fonts.load(`700 16px "${f}"`, SAMPLE).catch(() => {}),
+      ])
+    );
+    const deadline = new Promise<void>((resolve) => setTimeout(resolve, 500));
+
+    Promise.race([fontReady, deadline]).then(commit);
+  }, [buffer, locks, pairing, setActiveSavedId]);
 
   const addSlot = useCallback(() => {
     setPairing((current) => {
@@ -205,9 +228,20 @@ export default function Page() {
       const link = document.createElement("link");
       link.rel = "stylesheet";
       link.href = url;
+      // Once the CSS is parsed, pull woff2 bytes for both weights so fonts
+      // are fully cached before the user rolls — mark each as ready when done.
+      const SAMPLE = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+      link.onload = () => {
+        newFamilies.forEach((f) => {
+          Promise.all([
+            document.fonts.load(`400 16px "${f}"`, SAMPLE).catch(() => {}),
+            document.fonts.load(`700 16px "${f}"`, SAMPLE).catch(() => {}),
+          ]).then(() => readyFontsRef.current.add(f));
+        });
+      };
       document.head.appendChild(link);
       newFamilies.forEach(f => loadedFontsRef.current.add(f));
-      
+
       // Also mark for DOM prefetch
       setPrefetchedInDom(prev => {
         const next = new Set(prev);

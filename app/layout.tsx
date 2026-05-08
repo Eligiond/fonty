@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Fontly - The super fast font generator!",
+  title: "Fontfun-- The super fast font generator!",
   description: "Press space to discover beautiful Google Font pairings.",
 };
 

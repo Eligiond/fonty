@@ -307,7 +307,7 @@ function Stripe({
         </div>
       </aside>
 
-      {canAdd && !isLast && (
+      {canAdd && (
         <BoundaryAdd orientation="horizontal" onAdd={onAddAfter} />
       )}
     </section>
@@ -382,7 +382,7 @@ function Column({
           className="min-w-0 overflow-wrap-anywhere break-words"
           style={buildStyle(slot.family, slot.role, adj, VERTICAL_WEIGHT[slot.role])}
         />
-        {canAdd && !isLast && (
+        {canAdd && (
           <BoundaryAdd orientation="vertical" onAdd={onAddAfter} />
         )}
       </div>

@@ -96,43 +96,47 @@ export default function TopBar({
 
       {/* Right Group - Save (Ghost) and Copy (Solid) */}
       <div className="flex-1 flex items-center justify-end gap-3 h-full">
-        <ActionButton onClick={onSave} variant="ghost" justActed={justSaved}>
-          {justSaved ? (
-            <>
-              <Tick02Icon size={18} />
-              Saved
-            </>
-          ) : (
-            <>
-              <Bookmark02Icon 
-                size={18} 
-                className="transition-transform group-hover:scale-110" 
-              />
-              Save
-            </>
-          )}
-        </ActionButton>
-        <ActionButton 
-          onClick={onCopy} 
-          variant="solid" 
-          justActed={copied}
-          customColor={activeColor}
-        >
-          {copied ? (
-            <>
-              <Tick02Icon size={18} />
-              Copied
-            </>
-          ) : (
-            <>
-              <Copy01Icon 
-                size={18} 
-                className="transition-transform group-hover:-rotate-6" 
-              />
-              Copy config
-            </>
-          )}
-        </ActionButton>
+        <Tooltip label="Save pairing" shortcut="s" direction="bottom">
+          <ActionButton onClick={onSave} variant="ghost" justActed={justSaved}>
+            {justSaved ? (
+              <>
+                <Tick02Icon size={18} />
+                Saved
+              </>
+            ) : (
+              <>
+                <Bookmark02Icon
+                  size={18}
+                  className="transition-transform group-hover:scale-110"
+                />
+                Save
+              </>
+            )}
+          </ActionButton>
+        </Tooltip>
+        <Tooltip label="Copy config" direction="bottom">
+          <ActionButton
+            onClick={onCopy}
+            variant="solid"
+            justActed={copied}
+            customColor={activeColor}
+          >
+            {copied ? (
+              <>
+                <Tick02Icon size={18} />
+                Copied
+              </>
+            ) : (
+              <>
+                <Copy01Icon
+                  size={18}
+                  className="transition-transform group-hover:-rotate-6"
+                />
+                Copy config
+              </>
+            )}
+          </ActionButton>
+        </Tooltip>
       </div>
     </div>
   );
