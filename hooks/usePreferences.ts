@@ -46,21 +46,6 @@ export function usePreferences() {
           const calculatedWidth = Math.round((window.innerHeight - 32) / 4.15);
           setPanelWidth(Math.max(PANEL_MIN, Math.min(PANEL_MAX, calculatedWidth)));
         }
-        const validModes: ViewMode[] = ["vertical", "horizontal", "scroll"];
-        if (prefs.viewMode && validModes.includes(prefs.viewMode)) {
-          setViewMode(prefs.viewMode);
-        } else if (prefs.tab === "scroll") {
-          setViewMode("scroll");
-        }
-        if (prefs.mockupOffsets) setMockupOffsets(prefs.mockupOffsets);
-        if (prefs.mockupWidths) {
-          // Legacy values were stored in pixels (>1); fractions are 0..1.
-          // If any value is > 1, ignore the persisted state and keep the new fractional defaults.
-          const allFractional = Object.values(prefs.mockupWidths).every(
-            (v: any) => typeof v === "number" && v > 0 && v <= 1,
-          );
-          if (allFractional) setMockupWidths(prefs.mockupWidths);
-        }
       }
     } catch {}
   }, []);
@@ -72,12 +57,10 @@ export function usePreferences() {
         JSON.stringify({
           themeId, isDark,
           panelOpen, panelTab, panelWidth,
-          viewMode,
-          mockupOffsets, mockupWidths,
         }),
       );
     } catch {}
-  }, [themeId, isDark, panelOpen, panelTab, panelWidth, viewMode, mockupOffsets, mockupWidths]);
+  }, [themeId, isDark, panelOpen, panelTab, panelWidth]);
 
   return {
     themeId, setThemeId,

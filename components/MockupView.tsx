@@ -252,7 +252,7 @@ function FontBlock({
         />
 
         {/* Hover-revealed "+" between this block and the next — centered to specimen column */}
-        {canAdd && !isLast && (
+        {canAdd && (
           <div className="pointer-events-none absolute left-0 right-0 -bottom-10 z-30 flex h-8 items-center justify-center translate-y-2">
             <div className="pointer-events-auto opacity-0 transition-opacity duration-200 group-hover:opacity-100">
               <IconButton onClick={onAddAfter} ariaLabel="Add font" title="Add font">

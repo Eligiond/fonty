@@ -164,7 +164,7 @@ export default function SidePanel({
           <Tooltip
             label={open ? "Collapse panel" : "Expand panel"}
             shortcut="."
-            direction={open ? "left" : "right"}
+            direction="left"
           >
             <button
               onClick={onToggle}
@@ -753,7 +753,7 @@ function Footer({ open, onOpenSettings }: { open: boolean; onOpenSettings: () =>
     >
       {open ? (
         <div className="flex w-full items-center gap-1">
-          <Tooltip label="Settings" shortcut="i" direction="right" className="flex-1 min-w-0">
+          <Tooltip label="Settings" shortcut="i" direction="left" className="flex-1 min-w-0">
             <button
               onClick={onOpenSettings}
               aria-label="Settings"
@@ -774,7 +774,7 @@ function Footer({ open, onOpenSettings }: { open: boolean; onOpenSettings: () =>
           </div>
         </div>
       ) : (
-        <Tooltip label="Settings" shortcut="i" direction="right">
+        <Tooltip label="Settings" shortcut="i" direction="left">
           <button
             onClick={onOpenSettings}
             aria-label="Settings"

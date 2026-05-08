@@ -28,7 +28,7 @@ export function Tooltip({
   shortcut,
   label,
   children,
-  delay = 450,
+  delay = 0,
   direction = "right",
   className = "inline-flex",
 }: {
