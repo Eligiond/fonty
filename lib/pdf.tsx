@@ -19,16 +19,50 @@ const ROLE_SAMPLE_SIZE: Record<FontRole, number> = {
   caption: 10,
 };
 
-function bunnySlug(family: string): string {
+function fontSlug(family: string): string {
   return family
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");
 }
 
-function bunnyUrl(family: string, weight: 400 | 700, style: "normal" | "italic" = "normal"): string {
-  const slug = bunnySlug(family);
-  return `https://fonts.bunny.net/${slug}/files/${slug}-latin-${weight}-${style}.ttf`;
+// PascalCase the family name without spaces. Preserves all-caps segments
+// (IBM, DM, etc.) as-is, since that's how the Expo packages name them.
+function pascalName(family: string): string {
+  return family
+    .split(/[^a-zA-Z0-9]+/)
+    .filter(Boolean)
+    .map((part) =>
+      /^[A-Z0-9]+$/.test(part) ? part : part.charAt(0).toUpperCase() + part.slice(1),
+    )
+    .join("");
+}
+
+// @expo-google-fonts publishes the actual TTF files for every Google Font on
+// npm; jsdelivr serves them with CORS enabled. @react-pdf needs TTF, not
+// woff2, so this is the only reliable source we can use from the browser.
+function googleFontTtfUrl(family: string, weight: 400 | 700): string {
+  const slug = fontSlug(family);
+  const name = pascalName(family);
+  const style = weight === 700 ? "Bold" : "Regular";
+  // Path pattern: {slug}/{weight}{Style}/{PascalName}_{weight}{Style}.ttf
+  return `https://cdn.jsdelivr.net/npm/@expo-google-fonts/${slug}/${weight}${style}/${name}_${weight}${style}.ttf`;
+}
+
+// jsdelivr returns 200 with `text/plain` "Couldn't find ..." stubs when a
+// file is missing. Treat anything that isn't a binary font response as gone.
+async function urlExists(url: string): Promise<boolean> {
+  try {
+    const res = await fetch(url, { method: "HEAD", mode: "cors" });
+    if (!res.ok) return false;
+    const ct = res.headers.get("content-type") || "";
+    if (ct.startsWith("text/")) return false;
+    const len = parseInt(res.headers.get("content-length") || "0", 10);
+    if (len > 0 && len < 1000) return false;
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 export async function generateSpecimenPdf(
@@ -42,20 +76,33 @@ export async function generateSpecimenPdf(
 
   const uniqueFamilies = Array.from(new Set(pairing.slots.map((s) => s.family)));
 
-  for (const family of uniqueFamilies) {
-    try {
-      Font.register({
-        family,
-        fonts: [
-          { src: bunnyUrl(family, 400), fontWeight: 400 },
-          { src: bunnyUrl(family, 700), fontWeight: 700 },
-        ],
-      });
-    } catch {
-      // Font registration is best-effort; @react-pdf will fall back to default
-    }
-    Font.registerHyphenationCallback((word) => [word]);
-  }
+  // Probe each font URL before registering so a missing font doesn't poison
+  // the whole render. Anything that fails the probe is dropped from the
+  // registry — PDF falls back to Helvetica for that family.
+  const registered = new Set<string>();
+  await Promise.all(
+    uniqueFamilies.map(async (family) => {
+      const url400 = googleFontTtfUrl(family, 400);
+      const url700 = googleFontTtfUrl(family, 700);
+      const [ok400, ok700] = await Promise.all([urlExists(url400), urlExists(url700)]);
+      if (!ok400 && !ok700) return;
+      const fonts: { src: string; fontWeight: number }[] = [];
+      if (ok400) fonts.push({ src: url400, fontWeight: 400 });
+      if (ok700) fonts.push({ src: url700, fontWeight: 700 });
+      try {
+        Font.register({ family, fonts });
+        registered.add(family);
+      } catch {
+        // skip — fall back to Helvetica
+      }
+    }),
+  );
+  Font.registerHyphenationCallback((word) => [word]);
+
+  // Resolve the font stack at render time: registered families use their
+  // family name; unregistered ones fall back to Helvetica.
+  const resolveFamily = (family: string): string =>
+    registered.has(family) ? family : "Helvetica";
 
   const accentColor = accent ?? "#111111";
 
@@ -202,7 +249,12 @@ export async function generateSpecimenPdf(
         <Text
           style={[
             styles.coverTitle,
-            { fontFamily: pairing.slots[0]?.family ?? "Helvetica", fontWeight: 700 },
+            {
+              fontFamily: pairing.slots[0]
+                ? resolveFamily(pairing.slots[0].family)
+                : "Helvetica",
+              fontWeight: 700,
+            },
           ]}
         >
           {texts.heading}
@@ -223,7 +275,7 @@ export async function generateSpecimenPdf(
                 style={[
                   styles.sampleText,
                   {
-                    fontFamily: slot.family,
+                    fontFamily: resolveFamily(slot.family),
                     fontSize: ROLE_SAMPLE_SIZE[role],
                     fontWeight: role === "heading" ? 700 : 400,
                   },
@@ -241,7 +293,9 @@ export async function generateSpecimenPdf(
         </View>
       </Page>
 
-      {pairing.slots.map((slot) => (
+      {pairing.slots.map((slot) => {
+        const ff = resolveFamily(slot.family);
+        return (
         <Page key={`${slot.role}-${slot.family}`} size="A4" style={styles.page} wrap>
           <View style={styles.specimenHeader}>
             <Text style={styles.specimenEyebrow}>
@@ -250,7 +304,7 @@ export async function generateSpecimenPdf(
             <Text
               style={[
                 styles.specimenName,
-                { fontFamily: slot.family, fontWeight: 700 },
+                { fontFamily: ff, fontWeight: 700 },
               ]}
             >
               {slot.family}
@@ -259,19 +313,19 @@ export async function generateSpecimenPdf(
 
           <View style={styles.charBlock}>
             <Text style={styles.charLabel}>UPPERCASE</Text>
-            <Text style={[styles.charLine, { fontFamily: slot.family }]}>
+            <Text style={[styles.charLine, { fontFamily: ff }]}>
               ABCDEFGHIJKLMNOPQRSTUVWXYZ
             </Text>
           </View>
           <View style={styles.charBlock}>
             <Text style={styles.charLabel}>LOWERCASE</Text>
-            <Text style={[styles.charLine, { fontFamily: slot.family }]}>
+            <Text style={[styles.charLine, { fontFamily: ff }]}>
               abcdefghijklmnopqrstuvwxyz
             </Text>
           </View>
           <View style={styles.charBlock}>
             <Text style={styles.charLabel}>NUMERALS · PUNCTUATION</Text>
-            <Text style={[styles.charLine, { fontFamily: slot.family }]}>
+            <Text style={[styles.charLine, { fontFamily: ff }]}>
               0 1 2 3 4 5 6 7 8 9 . , : ; ! ? & @ #
             </Text>
           </View>
@@ -282,7 +336,7 @@ export async function generateSpecimenPdf(
               <Text
                 style={[
                   styles.sizeText,
-                  { fontFamily: slot.family, fontSize: size, lineHeight: size >= 36 ? 1.05 : 1.3 },
+                  { fontFamily: ff, fontSize: size, lineHeight: size >= 36 ? 1.05 : 1.3 },
                 ]}
               >
                 {size >= 36 ? "Type that travels well." : texts[slot.role]}
@@ -295,7 +349,8 @@ export async function generateSpecimenPdf(
             <Text render={({ pageNumber, totalPages }) => `${pageNumber} / ${totalPages}`} />
           </View>
         </Page>
-      ))}
+        );
+      })}
     </Document>
   );
 

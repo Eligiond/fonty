@@ -10,6 +10,8 @@ import {
   SecondBracketIcon,
   Html5Icon,
   Tick02Icon,
+  ArrowLeft01Icon,
+  Download01Icon,
 } from "@hugeicons/react";
 import type { FontPairing, FontRole } from "@/lib/fonts";
 import { cssFamily } from "@/lib/fonts";
@@ -49,22 +51,39 @@ const ITEMS: {
 
 const TITLE_ROLE_PRIORITY: FontRole[] = ["heading", "subheading", "body", "caption"];
 
+type PdfPreview =
+  | { state: "loading" }
+  | { state: "ready"; url: string; blob: Blob; filename: string }
+  | { state: "error"; message: string };
+
 export default function ExportMenu({ open, onClose, pairing, texts, accentColor }: Props) {
   const [confirmed, setConfirmed] = useState<ExportKey | null>(null);
   const [busy, setBusy] = useState<ExportKey | null>(null);
+  const [pdfPreview, setPdfPreview] = useState<PdfPreview | null>(null);
+
+  // Revoke any object URL when the preview is cleared or modal closes.
+  useEffect(() => {
+    return () => {
+      if (pdfPreview?.state === "ready") URL.revokeObjectURL(pdfPreview.url);
+    };
+  }, [pdfPreview]);
 
   useEffect(() => {
     if (!open) {
       setConfirmed(null);
       setBusy(null);
+      setPdfPreview(null);
       return;
     }
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape") {
+        if (pdfPreview) setPdfPreview(null);
+        else onClose();
+      }
     };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
-  }, [open, onClose]);
+  }, [open, onClose, pdfPreview]);
 
   if (!open) return null;
 
@@ -82,11 +101,18 @@ export default function ExportMenu({ open, onClose, pairing, texts, accentColor 
     try {
       switch (key) {
         case "pdf": {
-          setBusy("pdf");
-          const blob = await generateSpecimenPdf(pairing, texts, accentColor ?? null);
-          const safeName = (pairing.vibe || "fontfun").toLowerCase().replace(/[^a-z0-9]+/g, "-");
-          downloadBlob(blob, `${safeName}-specimen.pdf`);
-          flash("pdf");
+          setPdfPreview({ state: "loading" });
+          try {
+            const blob = await generateSpecimenPdf(pairing, texts, accentColor ?? null);
+            const url = URL.createObjectURL(blob);
+            const safeName = (pairing.vibe || "fontfun").toLowerCase().replace(/[^a-z0-9]+/g, "-");
+            setPdfPreview({ state: "ready", url, blob, filename: `${safeName}-specimen.pdf` });
+          } catch (err) {
+            setPdfPreview({
+              state: "error",
+              message: err instanceof Error ? err.message : "PDF generation failed",
+            });
+          }
           break;
         }
         case "url": {
@@ -122,6 +148,8 @@ export default function ExportMenu({ open, onClose, pairing, texts, accentColor 
     }
   };
 
+  const inPreview = pdfPreview !== null;
+
   return (
     <div
       className="fixed inset-0 z-[1100] flex items-center justify-center bg-black/20 p-4 backdrop-blur-sm animate-in fade-in duration-200"
@@ -129,33 +157,60 @@ export default function ExportMenu({ open, onClose, pairing, texts, accentColor 
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-md overflow-hidden rounded-3xl border shadow-2xl animate-in zoom-in-95 slide-in-from-bottom-4 duration-300 ease-out"
+        className="flex flex-col w-full overflow-hidden rounded-3xl border shadow-2xl animate-in zoom-in-95 slide-in-from-bottom-4 duration-300 ease-out transition-[max-width,height] duration-300"
         style={{
           background: "var(--surface)",
           borderColor: "var(--border)",
           color: "var(--text)",
+          maxWidth: inPreview ? 720 : 448,
+          maxHeight: inPreview ? "90vh" : undefined,
         }}
       >
         <header
-          className="flex items-center justify-between border-b px-6 py-4"
+          className="flex items-center justify-between border-b px-6 py-4 flex-shrink-0"
           style={{ borderColor: "var(--border)" }}
         >
-          <h2
-            className="text-[22px] font-bold tracking-tight leading-none truncate"
-            style={titleSlot ? { fontFamily: cssFamily(titleSlot.family) } : undefined}
-          >
-            Export Pairing
-          </h2>
+          <div className="flex items-center gap-2 min-w-0">
+            {inPreview && (
+              <button
+                onClick={() => setPdfPreview(null)}
+                aria-label="Back to export options"
+                className="group rounded-full p-2 transition-colors hover:bg-[color:var(--bg)]"
+                style={{ color: "var(--text-muted)" }}
+              >
+                <ArrowLeft01Icon
+                  size={18}
+                  className="transition-transform duration-200 ease-[cubic-bezier(0.23,1,0.32,1)] group-hover:-translate-x-0.5"
+                />
+              </button>
+            )}
+            <h2
+              className="text-[22px] font-bold tracking-tight leading-none truncate"
+              style={titleSlot ? { fontFamily: cssFamily(titleSlot.family) } : undefined}
+            >
+              {inPreview ? "PDF Preview" : "Export Pairing"}
+            </h2>
+          </div>
           <button
             onClick={onClose}
             aria-label="Close"
-            className="rounded-full p-2 transition-colors hover:bg-[color:var(--bg)]"
+            className="rounded-full p-2 transition-colors hover:bg-[color:var(--bg)] flex-shrink-0"
             style={{ color: "var(--text-muted)" }}
           >
             <Cancel01Icon size={20} />
           </button>
         </header>
 
+        {inPreview ? (
+          <PdfPreviewBody
+            preview={pdfPreview!}
+            onDownload={() => {
+              if (pdfPreview?.state === "ready") {
+                downloadBlob(pdfPreview.blob, pdfPreview.filename);
+              }
+            }}
+          />
+        ) : (
         <div className="p-6">
           <div className="grid grid-cols-3 gap-3">
             {ITEMS.map(({ key, label, hint, Icon }) => {
@@ -206,6 +261,79 @@ export default function ExportMenu({ open, onClose, pairing, texts, accentColor 
             })}
           </div>
         </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function PdfPreviewBody({
+  preview,
+  onDownload,
+}: {
+  preview: PdfPreview;
+  onDownload: () => void;
+}) {
+  return (
+    <div className="flex flex-col flex-1 min-h-0">
+      <div
+        className="flex-1 min-h-0 m-4 rounded-xl border overflow-hidden flex items-center justify-center"
+        style={{
+          background: "var(--bg)",
+          borderColor: "var(--border)",
+          minHeight: 480,
+        }}
+      >
+        {preview.state === "loading" && (
+          <div className="flex flex-col items-center gap-3 px-6 py-8 text-center">
+            <span className="h-8 w-8 animate-spin rounded-full border-2 border-current border-t-transparent opacity-60" />
+            <p className="text-[13px] font-medium" style={{ color: "var(--text)" }}>
+              Building your specimen…
+            </p>
+            <p className="text-[11px]" style={{ color: "var(--text-muted)" }}>
+              Embedding fonts and laying out pages
+            </p>
+          </div>
+        )}
+
+        {preview.state === "ready" && (
+          <iframe
+            title="PDF preview"
+            src={`${preview.url}#toolbar=0&navpanes=0`}
+            className="w-full h-full"
+            style={{ minHeight: 480, border: "none", background: "#fff" }}
+          />
+        )}
+
+        {preview.state === "error" && (
+          <div className="flex flex-col items-center gap-3 px-6 py-10 text-center max-w-sm">
+            <p className="text-[13px] font-bold" style={{ color: "var(--text)" }}>
+              Couldn’t generate the PDF
+            </p>
+            <p className="text-[12px]" style={{ color: "var(--text-muted)" }}>
+              {preview.message}
+            </p>
+          </div>
+        )}
+      </div>
+
+      <div
+        className="flex items-center justify-end gap-2 border-t px-4 py-3 flex-shrink-0"
+        style={{ borderColor: "var(--border)" }}
+      >
+        <button
+          onClick={onDownload}
+          disabled={preview.state !== "ready"}
+          className="inline-flex items-center gap-2 rounded-xl h-10 px-5 text-[13px] font-bold tracking-tight transition-[transform,box-shadow,opacity] duration-200 hover:-translate-y-px active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed disabled:translate-y-0"
+          style={{
+            background: "var(--text)",
+            color: "var(--bg)",
+            boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
+          }}
+        >
+          <Download01Icon size={16} />
+          Download PDF
+        </button>
       </div>
     </div>
   );
