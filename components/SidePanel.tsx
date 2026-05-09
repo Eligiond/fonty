@@ -3,15 +3,11 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
-  ArrowLeft01Icon,
-  ArrowRight01Icon,
   ArrowTurnBackwardIcon,
   Settings01Icon,
-  PencilEdit01Icon,
   Delete02Icon,
   GithubIcon,
   Linkedin01Icon,
-  MoreHorizontalIcon,
   Tick02Icon,
 } from "@hugeicons/react";
 import type { FontPairing, FontRole } from "@/lib/fonts";
@@ -58,7 +54,7 @@ export const PANEL_MIN = 200;
 export const PANEL_MAX = 400;
 export const PANEL_DEFAULT = 250;
 
-const RAIL_WIDTH = 64;
+const RAIL_WIDTH = 0;
 
 export const ROLE_CONFIG: Record<FontRole, {
   label: string;
@@ -139,6 +135,7 @@ export default function SidePanel({
 
   return (
     <aside
+      aria-hidden={!open}
       className={`hidden flex-shrink-0 lg:flex flex-col overflow-hidden border-l ${resizing ? "" : "transition-[width] duration-300 cubic-bezier(0.23, 1, 0.32, 1)"}`}
       style={{
         width: open ? width : RAIL_WIDTH,
@@ -147,7 +144,10 @@ export default function SidePanel({
         borderColor: "var(--border)",
       }}
     >
-      <div className="relative flex h-full w-full flex-col">
+      <div
+        className="relative flex h-full flex-col"
+        style={{ width, minWidth: width }}
+      >
         {open && (
           <div
             onMouseDown={startResize}
@@ -159,75 +159,34 @@ export default function SidePanel({
           />
         )}
 
-        {/* Header: Toggle */}
-        <div className={`relative flex items-center h-16 px-3 ${open ? "justify-start" : "justify-center"}`}>
-          <Tooltip
-            label={open ? "Collapse panel" : "Expand panel"}
-            shortcut="."
-            direction="left"
-          >
-            <button
-              onClick={onToggle}
-              aria-label={open ? "Collapse panel" : "Expand panel"}
-              aria-expanded={open}
-              className={`group ${RAIL_BTN_CLASS}`}
-              style={{ color: "var(--text-muted)" }}
-            >
-              <div className={`relative flex items-center justify-center transition-transform duration-300 ease-[cubic-bezier(0.23,1,0.32,1)] ${open ? "group-hover:translate-x-0.5" : "group-hover:-translate-x-0.5"}`}>
-                {open ? <ArrowRight01Icon size={18} /> : <ArrowLeft01Icon size={18} />}
-                <div className={`absolute opacity-0 transition-all duration-300 ease-[cubic-bezier(0.23,1,0.32,1)] ${
-                  open 
-                    ? "-left-1.5 group-hover:opacity-40 group-hover:-left-1" 
-                    : "-right-1.5 group-hover:opacity-40 group-hover:-right-1"
-                }`}>
-                  {open ? <ArrowRight01Icon size={14} /> : <ArrowLeft01Icon size={14} />}
-                </div>
-              </div>
-            </button>
-          </Tooltip>
-
-          {open && (
-            <span
-              className="absolute right-6 top-1/2 -translate-y-1/2 text-[26px] font-bold tracking-tight select-none cursor-pointer uppercase leading-none transition-all duration-300 ease-[cubic-bezier(0.23,1,0.32,1)] hover:scale-110 hover:-rotate-1 hover:text-[var(--accent)] active:scale-95"
-              style={{ 
-                fontFamily: "'Syncopate', system-ui, sans-serif", 
-                color: "var(--text)"
-              }}
-            >
-              FONTFUN
-            </span>
-          )}
+        {/* Tabs at top */}
+        <div className="px-3 pt-4 pb-3">
+          <PanelTabs tab={tab} onChange={onTabChange} />
         </div>
-        {/* Content Area */}
-        {open && (
-          <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
-            {/* Tab Navigation - Now at the top of content */}
-            <div className="px-3 pb-3">
-              <PanelTabs tab={tab} onChange={onTabChange} />
-            </div>
 
-            <div className="flex-1 min-h-0 overflow-hidden">
-              {tab === "adjust" ? (
-                <AdjustView 
-                  values={values} 
-                  onChange={onChange} 
-                  roles={roles} 
-                  isDefault={isDefault}
-                  onReset={() => onChange(DEFAULT_ADJUSTMENTS)}
-                />
-              ) : (
-                <SavedListView
-                  saved={saved}
-                  activeId={activeId}
-                  onLoad={onLoad}
-                  onRename={onRename}
-                  onDelete={onDelete}
-                  onSetColor={onSetColor}
-                />
-              )}
-            </div>
+        {/* Content Area */}
+        <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+          <div className="flex-1 min-h-0 overflow-hidden">
+            {tab === "adjust" ? (
+              <AdjustView
+                values={values}
+                onChange={onChange}
+                roles={roles}
+                isDefault={isDefault}
+                onReset={() => onChange(DEFAULT_ADJUSTMENTS)}
+              />
+            ) : (
+              <SavedListView
+                saved={saved}
+                activeId={activeId}
+                onLoad={onLoad}
+                onRename={onRename}
+                onDelete={onDelete}
+                onSetColor={onSetColor}
+              />
+            )}
           </div>
-        )}
+        </div>
 
         {/* Footer */}
         <Footer open={open} onOpenSettings={onOpenSettings} />

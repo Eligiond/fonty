@@ -317,24 +317,16 @@ function Stripe({
       <aside className="flex flex-shrink-0 items-center gap-3 text-right">
         <div className="w-[140px]">
           <div
-            className="text-[11px] uppercase tracking-[0.16em] opacity-80 truncate"
+            className="text-[13px] uppercase tracking-[0.16em] opacity-80 truncate"
             style={{ color: "var(--text)" }}
           >
             {meta.tag} · {meta.label}
           </div>
           <button
             onClick={(e) => onOpenPicker?.(slot.role, e.currentTarget.getBoundingClientRect())}
-            className="mt-0.5 truncate text-[14px] font-medium text-left max-w-full -mx-2 px-2 py-0.5 rounded-full transition-all duration-150"
+            className="font-pick-btn mt-0.5 truncate text-[14px] font-medium text-left max-w-full -mx-2 px-2 py-0.5 rounded-full"
             style={{ fontFamily: cssFamily(slot.family), color: "var(--text)" }}
             title="Choose font"
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = "color-mix(in oklch, var(--text) 8%, transparent)";
-              e.currentTarget.style.boxShadow = "0 0 0 1px color-mix(in oklch, var(--text) 16%, transparent)";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = "transparent";
-              e.currentTarget.style.boxShadow = "none";
-            }}
           >
             {slot.family}
           </button>
@@ -402,7 +394,7 @@ function Column({
     >
       <header className="flex items-start justify-between gap-3">
         <div
-          className="text-[11px] uppercase tracking-[0.16em] opacity-80"
+          className="text-[13px] uppercase tracking-[0.16em] opacity-80"
           style={{ color: "var(--text)" }}
         >
           {meta.tag} · {meta.label}
@@ -427,17 +419,9 @@ function Column({
       <footer>
         <button
           onClick={(e) => onOpenPicker?.(slot.role, e.currentTarget.getBoundingClientRect())}
-          className="truncate text-[13px] font-medium max-w-full text-left -mx-3 px-3 py-1.5 rounded-full transition-all duration-150"
+          className="font-pick-btn truncate text-[13px] font-medium max-w-full text-left -mx-3 px-3 py-1.5 rounded-full"
           style={{ fontFamily: cssFamily(slot.family), color: "var(--text)" }}
           title="Choose font"
-          onMouseEnter={(e) => {
-            e.currentTarget.style.background = "color-mix(in oklch, var(--text) 8%, transparent)";
-            e.currentTarget.style.boxShadow = "0 0 0 1px color-mix(in oklch, var(--text) 16%, transparent)";
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.background = "transparent";
-            e.currentTarget.style.boxShadow = "none";
-          }}
         >
           {slot.family}
         </button>

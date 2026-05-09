@@ -12,6 +12,7 @@ import {
   type FontPairing,
   type FontRole,
 } from "@/lib/fonts";
+import { buildTailwindConfig } from "@/lib/share";
 import { getTheme, paletteToCssVars } from "@/lib/themes";
 import TopBar from "@/components/TopBar";
 import GenerateView, { type Texts } from "@/components/GenerateView";
@@ -31,6 +32,24 @@ import { useRef, useEffect } from "react";
 
 type LockState = Record<FontRole, boolean>;
 
+// Apply a historical snapshot, but preserve currently-locked roles' fonts.
+// Locks are evaluated at undo/redo time: a role locked NOW keeps its current
+// font even if the snapshot has a different one for that role.
+function applySnapshot(
+  snapshot: FontPairing,
+  current: FontPairing,
+  locks: LockState,
+): FontPairing {
+  return {
+    ...snapshot,
+    slots: snapshot.slots.map((snapSlot) => {
+      if (!locks[snapSlot.role]) return snapSlot;
+      const currentSlot = current.slots.find((s) => s.role === snapSlot.role);
+      return currentSlot ? { ...snapSlot, family: currentSlot.family } : snapSlot;
+    }),
+  };
+}
+
 const DEFAULT_TEXTS: Texts = {
   heading: "Find font pairings that give your product character.",
   subheading: "Fontfun delivers an intentional typography system, giving every single product interface clarity and soul.",
@@ -40,6 +59,8 @@ const DEFAULT_TEXTS: Texts = {
 
 export default function Page() {
   const [pairing, setPairing] = useState<FontPairing>(FONT_PAIRINGS[0]);
+  const [history, setHistory] = useState<FontPairing[]>([FONT_PAIRINGS[0]]);
+  const [historyCursor, setHistoryCursor] = useState(0);
   const [buffer, setBuffer] = useState<FontPairing[]>([]);
   const [locks, setLocks] = useState<LockState>({
     heading: false,
@@ -47,6 +68,18 @@ export default function Page() {
     body: false,
     caption: false,
   });
+
+  const commitPairing = useCallback(
+    (next: FontPairing) => {
+      setPairing(next);
+      setHistory((prev) => {
+        const trimmed = prev.slice(0, historyCursor + 1);
+        return [...trimmed, next];
+      });
+      setHistoryCursor((c) => c + 1);
+    },
+    [historyCursor],
+  );
 
   // Keep buffer filled to 20 items
   useEffect(() => {
@@ -98,7 +131,6 @@ export default function Page() {
   const [adjustments, setAdjustments] = useState<Adjustments>(DEFAULT_ADJUSTMENTS);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [saveModalOpen, setSaveModalOpen] = useState(false);
-  const autoCloseRef = useRef(false);
   const loadedFontsRef = useRef<Set<string>>(new Set());
   const [prefetchedInDom, setPrefetchedInDom] = useState<Set<string>>(new Set());
 
@@ -118,7 +150,7 @@ export default function Page() {
     const families = next.slots.map((s) => s.family);
 
     const commit = () => {
-      setPairing(next);
+      commitPairing(next);
       if (isFromBuffer) setBuffer((prev) => prev.slice(1));
       setActiveSavedId(null);
       isRollingRef.current = false;
@@ -141,45 +173,45 @@ export default function Page() {
     const deadline = new Promise<void>((resolve) => setTimeout(resolve, 500));
 
     Promise.race([fontReady, deadline]).then(commit);
-  }, [buffer, locks, pairing, setActiveSavedId]);
+  }, [buffer, locks, pairing, setActiveSavedId, commitPairing]);
 
   const addSlot = useCallback(() => {
-    setPairing((current) => {
-      if (current.slots.length >= MAX_SLOTS) return current;
-      const present = new Set(current.slots.map((s) => s.role));
-      const order: FontRole[] = ["caption", "subheading", "body", "heading"];
-      const role = order.find((r) => !present.has(r));
-      if (!role) return current;
-      const used = current.slots.map((s) => s.family);
-      const family = pickFamilyForRole(role, used);
-      return { ...current, slots: [...current.slots, { role, family }] };
-    });
-  }, []);
+    if (pairing.slots.length >= MAX_SLOTS) return;
+    const present = new Set(pairing.slots.map((s) => s.role));
+    const order: FontRole[] = ["caption", "subheading", "body", "heading"];
+    const role = order.find((r) => !present.has(r));
+    if (!role) return;
+    const used = pairing.slots.map((s) => s.family);
+    const family = pickFamilyForRole(role, used);
+    commitPairing({ ...pairing, slots: [...pairing.slots, { role, family }] });
+  }, [pairing, commitPairing]);
 
-  const removeSlot = useCallback((role: FontRole) => {
-    setPairing((current) => {
-      if (current.slots.length <= MIN_SLOTS) return current;
-      return { ...current, slots: current.slots.filter((s) => s.role !== role) };
-    });
-  }, []);
+  const removeSlot = useCallback(
+    (role: FontRole) => {
+      if (pairing.slots.length <= MIN_SLOTS) return;
+      commitPairing({ ...pairing, slots: pairing.slots.filter((s) => s.role !== role) });
+    },
+    [pairing, commitPairing],
+  );
 
-  const reorderSlots = useCallback((fromIdx: number, toIdx: number) => {
-    setPairing((current) => {
+  const reorderSlots = useCallback(
+    (fromIdx: number, toIdx: number) => {
       if (
         fromIdx === toIdx ||
         fromIdx < 0 ||
         toIdx < 0 ||
-        fromIdx >= current.slots.length ||
-        toIdx >= current.slots.length
+        fromIdx >= pairing.slots.length ||
+        toIdx >= pairing.slots.length
       ) {
-        return current;
+        return;
       }
-      const next = current.slots.slice();
+      const next = pairing.slots.slice();
       const [moved] = next.splice(fromIdx, 1);
       next.splice(toIdx, 0, moved);
-      return { ...current, slots: next };
-    });
-  }, []);
+      commitPairing({ ...pairing, slots: next });
+    },
+    [pairing, commitPairing],
+  );
 
   useKeyboardShortcuts({ roll, setPanelOpen, setSettingsOpen });
 
@@ -187,11 +219,43 @@ export default function Page() {
     setLocks((l) => ({ ...l, [role]: !l[role] }));
 
   const setSlotFont = (role: FontRole, family: string) =>
-    setPairing((p) => ({
-      ...p,
+    commitPairing({
+      ...pairing,
       id: `pick-${Date.now()}`,
-      slots: p.slots.map((s) => (s.role === role ? { ...s, family } : s)),
-    }));
+      slots: pairing.slots.map((s) => (s.role === role ? { ...s, family } : s)),
+    });
+
+  const canUndo = historyCursor > 0;
+  const canRedo = historyCursor < history.length - 1;
+
+  const onUndo = useCallback(() => {
+    if (historyCursor === 0) return;
+    const target = history[historyCursor - 1];
+    setPairing((curr) => applySnapshot(target, curr, locks));
+    setHistoryCursor((c) => c - 1);
+    setActiveSavedId(null);
+  }, [historyCursor, history, locks, setActiveSavedId]);
+
+  const onRedo = useCallback(() => {
+    if (historyCursor >= history.length - 1) return;
+    const target = history[historyCursor + 1];
+    setPairing((curr) => applySnapshot(target, curr, locks));
+    setHistoryCursor((c) => c + 1);
+    setActiveSavedId(null);
+  }, [historyCursor, history, locks, setActiveSavedId]);
+
+  const onOpenAdjust = useCallback(() => {
+    if (panelOpen && panelTab === "adjust") {
+      setPanelOpen(false);
+    } else {
+      setPanelTab("adjust");
+      setPanelOpen(true);
+    }
+  }, [panelOpen, panelTab, setPanelOpen, setPanelTab]);
+
+  const onOpenDashboard = useCallback(() => {
+    setPanelOpen((v) => !v);
+  }, [setPanelOpen]);
 
   const onTextChange = (role: FontRole, value: string) => {
     const v = value.trim().length === 0 ? DEFAULT_TEXTS[role] : value;
@@ -264,12 +328,12 @@ export default function Page() {
 
   return (
     <main
-      className="flex h-screen w-screen overflow-hidden"
+      className="flex flex-col h-screen w-screen overflow-hidden"
       style={{ ...themeStyle, background: palette.bg, color: palette.text }}
     >
       {/* Hidden preloader to force browser to fetch font files ahead of time */}
-      <div 
-        aria-hidden="true" 
+      <div
+        aria-hidden="true"
         className="pointer-events-none absolute h-0 w-0 overflow-hidden opacity-0"
       >
         {Array.from(prefetchedInDom).map(f => (
@@ -277,35 +341,42 @@ export default function Page() {
         ))}
       </div>
 
-      <div className="relative min-w-0 flex-1">
-        <div className="absolute inset-x-0 top-0 z-20">
-          <TopBar
-            viewMode={viewMode}
-            setViewMode={(newMode) => {
-              if ((newMode === "vertical" || newMode === "scroll") && !autoCloseRef.current) {
-                setPanelOpen(false);
-                autoCloseRef.current = true;
-              }
-              setViewMode(newMode);
-            }}
-            vibe={pairing.vibe}
-            isDark={isDark}
-            onRoll={roll}
-            onSave={() => setSaveModalOpen(true)}
-            justSaved={justSaved}
-            onCopy={async () => {
-              const config = buildTailwindConfig(pairing);
-              try {
-                await navigator.clipboard.writeText(config);
-                setCopied(true);
-                setTimeout(() => setCopied(false), 1500);
-              } catch {}
-            }}
-            copied={copied}
-            activeColor={persistentColor}
-          />
-        </div>
-        <div className="absolute inset-0">
+      {/* Top navbar — full width, sits above everything below */}
+      <div className="relative z-30 flex-shrink-0">
+        <TopBar
+          viewMode={viewMode}
+          setViewMode={setViewMode}
+          vibe={pairing.vibe}
+          isDark={isDark}
+          onRoll={roll}
+          onSave={() => setSaveModalOpen(true)}
+          justSaved={justSaved}
+          onCopy={async () => {
+            const config = buildTailwindConfig(pairing);
+            try {
+              await navigator.clipboard.writeText(config);
+              setCopied(true);
+              setTimeout(() => setCopied(false), 1500);
+            } catch {}
+          }}
+          copied={copied}
+          activeColor={persistentColor}
+          onUndo={onUndo}
+          onRedo={onRedo}
+          canUndo={canUndo}
+          canRedo={canRedo}
+          onOpenAdjust={onOpenAdjust}
+          onOpenDashboard={onOpenDashboard}
+          panelOpen={panelOpen}
+          panelTab={panelTab}
+          pairing={pairing}
+          texts={texts}
+        />
+      </div>
+
+      {/* Content row — view + side panel */}
+      <div className="flex flex-1 min-h-0">
+        <div className="relative min-w-0 flex-1">
           {viewMode === "scroll" ? (
             <MockupView
               pairing={pairing}
@@ -339,8 +410,7 @@ export default function Page() {
             />
           )}
         </div>
-      </div>
-      <SidePanel
+        <SidePanel
         open={panelOpen}
         onToggle={() => setPanelOpen((v) => !v)}
         width={panelWidth}
@@ -349,7 +419,7 @@ export default function Page() {
         onTabChange={setPanelTab}
         saved={saved}
         activeId={activeSavedId}
-        onLoad={(item) => loadSaved(item, setPairing)}
+        onLoad={(item) => loadSaved(item, commitPairing)}
         onRename={renameSaved}
         onDelete={deleteSaved}
         onSetColor={setSavedColor}
@@ -358,6 +428,7 @@ export default function Page() {
         roles={pairing.slots.map((s) => s.role)}
         onOpenSettings={() => setSettingsOpen(true)}
       />
+      </div>
 
       {settingsOpen && (
         <SettingsPanel
@@ -457,30 +528,3 @@ function SaveModal({ onConfirm, onCancel, defaultName }: {
     );
 }
 
-function buildTailwindConfig(p: FontPairing): string {
-  const fam = (name: string) => `['${name}', 'system-ui', 'sans-serif']`;
-  const fontUrl = (name: string) => name.replace(/\s+/g, "+");
-  const fontFamilyEntries = p.slots
-    .map((s) => `        ${s.role.padEnd(11, " ")} ${fam(s.family)},`)
-    .join("\n");
-  const googleFamilies = p.slots
-    .map((s) => `family=${fontUrl(s.family)}:wght@400;500;600;700`)
-    .join("&");
-  return `// tailwind.config.ts
-import type { Config } from "tailwindcss";
-
-export default {
-  content: ["./app/**/*.{ts,tsx}", "./components/**/*.{ts,tsx}"],
-  theme: {
-    extend: {
-      fontFamily: {
-${fontFamilyEntries}
-      },
-    },
-  },
-} satisfies Config;
-
-// Load via Google Fonts:
-// https://fonts.googleapis.com/css2?${googleFamilies}&display=swap
-`;
-}

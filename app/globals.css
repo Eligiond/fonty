@@ -79,6 +79,45 @@ button:active:not(:disabled),
   animation: fonty-pulse-keyframes 280ms var(--ease-out);
 }
 
+/* Font-name picker button — two-tier hover.
+   Section hover (mouse anywhere in the slot) hints that it's interactive.
+   Direct button hover is a stronger, focused state. */
+.font-pick-btn {
+  transition: background-color 200ms cubic-bezier(0.23, 1, 0.32, 1),
+              box-shadow 200ms cubic-bezier(0.23, 1, 0.32, 1),
+              transform 200ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+.group:hover .font-pick-btn {
+  background: color-mix(in oklch, var(--text) 4%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in oklch, var(--text) 10%, transparent);
+}
+.group .font-pick-btn:hover {
+  background: color-mix(in oklch, var(--text) 10%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in oklch, var(--text) 22%, transparent);
+  transform: scale(1.02);
+}
+
+/* Export modal tile — staggered entrance after the modal lands */
+.export-tile {
+  opacity: 0;
+  animation: fonty-tile-in 260ms cubic-bezier(0.23, 1, 0.32, 1) forwards;
+}
+.export-tile:nth-child(1) { animation-delay: 60ms; }
+.export-tile:nth-child(2) { animation-delay: 100ms; }
+.export-tile:nth-child(3) { animation-delay: 140ms; }
+.export-tile:nth-child(4) { animation-delay: 180ms; }
+.export-tile:nth-child(5) { animation-delay: 220ms; }
+@keyframes fonty-tile-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
 /* Range slider styling */
 .fonty-range {
   -webkit-appearance: none;
