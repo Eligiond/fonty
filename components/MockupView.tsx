@@ -4,6 +4,7 @@ import { cssFamily, type FontPairing, type FontRole, type FontSlot, MIN_SLOTS, M
 import EditableText from "@/components/EditableText";
 import IconButton from "@/components/IconButton";
 import { Tooltip } from "@/components/Tooltip";
+import FontPicker from "@/components/FontPicker";
 import type { Adjustments } from "@/components/SidePanel";
 import {
   SquareLock02Icon,
@@ -46,6 +47,8 @@ const ROLE_WEIGHT: Record<FontRole, string> = {
   caption: "500",
 };
 
+type PickerTarget = { role: FontRole; rect: DOMRect };
+
 type Props = {
   pairing: FontPairing;
   texts: Texts;
@@ -59,6 +62,7 @@ type Props = {
   setWidths: (v: any) => void;
   onAddSlot: () => void;
   onRemoveSlot: (role: FontRole) => void;
+  onFontChange?: (role: FontRole, family: string) => void;
 };
 
 const DEFAULT_FRACTION = 0.66;
@@ -77,8 +81,10 @@ export default function MockupView({
   setWidths,
   onAddSlot,
   onRemoveSlot,
+  onFontChange,
 }: Props) {
   const slots = pairing.slots;
+  const [pickerTarget, setPickerTarget] = useState<PickerTarget | null>(null);
   const canAdd = slots.length < MAX_SLOTS;
   const canRemove = slots.length > MIN_SLOTS;
 
@@ -114,36 +120,50 @@ export default function MockupView({
     };
   };
 
+  const openPicker = (role: FontRole, rect: DOMRect) => setPickerTarget({ role, rect });
+  const closePicker = () => setPickerTarget(null);
+
   return (
-    <div
-      className="flex h-full w-full flex-col overflow-y-auto overflow-x-hidden select-none"
-      style={{ background: "var(--bg)", color: "var(--text)" }}
-    >
-      <div className="w-full px-12 flex flex-col flex-1 py-32 md:py-48 gap-16">
-        {slots.map((slot, idx) => (
-          <FontBlock
-            key={slot.role}
-            slot={slot}
-            label={ROLE_LABEL[slot.role]}
-            locked={locks[slot.role]}
-            onToggleLock={() => onToggleLock(slot.role)}
-            text={texts[slot.role]}
-            onTextChange={(v) => onTextChange(slot.role, v)}
-            style={buildStyle(slot)}
-            className={slot.role === "heading" ? "tracking-tighter" : ""}
-            offset={offsets?.[slot.role] ?? 0}
-            widthFraction={widths?.[slot.role] ?? DEFAULT_FRACTION}
-            onDragY={(dy) => updateOffset(slot.role, dy)}
-            onDragW={(dw, parentW, chromeW) => updateWidthFraction(slot.role, dw, parentW, chromeW)}
-            canRemove={canRemove}
-            onRemove={() => onRemoveSlot(slot.role)}
-            canAdd={canAdd}
-            isLast={idx === slots.length - 1}
-            onAddAfter={onAddSlot}
-          />
-        ))}
+    <>
+      <div
+        className="flex h-full w-full flex-col overflow-y-auto overflow-x-hidden select-none"
+        style={{ background: "var(--bg)", color: "var(--text)" }}
+      >
+        <div className="w-full px-12 flex flex-col flex-1 py-32 md:py-48 gap-16">
+          {slots.map((slot, idx) => (
+            <FontBlock
+              key={slot.role}
+              slot={slot}
+              label={ROLE_LABEL[slot.role]}
+              locked={locks[slot.role]}
+              onToggleLock={() => onToggleLock(slot.role)}
+              text={texts[slot.role]}
+              onTextChange={(v) => onTextChange(slot.role, v)}
+              style={buildStyle(slot)}
+              className={slot.role === "heading" ? "tracking-tighter" : ""}
+              offset={offsets?.[slot.role] ?? 0}
+              widthFraction={widths?.[slot.role] ?? DEFAULT_FRACTION}
+              onDragY={(dy) => updateOffset(slot.role, dy)}
+              onDragW={(dw, parentW, chromeW) => updateWidthFraction(slot.role, dw, parentW, chromeW)}
+              canRemove={canRemove}
+              onRemove={() => onRemoveSlot(slot.role)}
+              canAdd={canAdd}
+              isLast={idx === slots.length - 1}
+              onAddAfter={onAddSlot}
+              onOpenPicker={onFontChange ? openPicker : undefined}
+            />
+          ))}
+        </div>
       </div>
-    </div>
+      {pickerTarget && onFontChange && (
+        <FontPicker
+          currentFamily={pairing.slots.find((s) => s.role === pickerTarget.role)?.family ?? ""}
+          anchorRect={pickerTarget.rect}
+          onSelect={(family) => onFontChange(pickerTarget.role, family)}
+          onClose={closePicker}
+        />
+      )}
+    </>
   );
 }
 
@@ -169,6 +189,7 @@ function FontBlock({
   canAdd,
   isLast,
   onAddAfter,
+  onOpenPicker,
 }: {
   slot: FontSlot;
   label: string;
@@ -187,6 +208,7 @@ function FontBlock({
   canAdd: boolean;
   isLast: boolean;
   onAddAfter: () => void;
+  onOpenPicker?: (role: FontRole, rect: DOMRect) => void;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const infoRef = useRef<HTMLElement>(null);
@@ -252,12 +274,20 @@ function FontBlock({
         />
 
         {/* Hover-revealed "+" between this block and the next — centered to specimen column */}
-        {canAdd && (
+        {canAdd && !isLast && (
           <div className="pointer-events-none absolute left-0 right-0 -bottom-10 z-30 flex h-8 items-center justify-center translate-y-2">
             <div className="pointer-events-auto opacity-0 transition-opacity duration-200 group-hover:opacity-100">
-              <IconButton onClick={onAddAfter} ariaLabel="Add font" title="Add font">
+              <button
+                onClick={onAddAfter}
+                aria-label="Add font"
+                title="Add font"
+                className="flex items-center justify-center w-8 h-8 rounded-full transition-all duration-150 active:scale-95"
+                style={{ background: "var(--text)", color: "var(--bg)" }}
+                onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.opacity = "0.65"; }}
+                onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.opacity = "1"; }}
+              >
                 <PlusSignIcon size={18} />
-              </IconButton>
+              </button>
             </div>
           </div>
         )}
@@ -301,15 +331,25 @@ function FontBlock({
           >
             {label}
           </div>
-          <div
-            className="mt-0.5 truncate text-[14px] font-medium"
+          <button
+            onClick={(e) => onOpenPicker?.(slot.role, e.currentTarget.getBoundingClientRect())}
+            className="mt-0.5 truncate text-[14px] font-medium text-left max-w-full -mx-2 px-2 py-0.5 rounded-full transition-all duration-150"
             style={{ fontFamily: cssFamily(slot.family), color: "var(--text)" }}
+            title="Choose font"
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = "color-mix(in oklch, var(--text) 8%, transparent)";
+              e.currentTarget.style.boxShadow = "0 0 0 1px color-mix(in oklch, var(--text) 16%, transparent)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = "transparent";
+              e.currentTarget.style.boxShadow = "none";
+            }}
           >
             {slot.family}
-          </div>
+          </button>
         </div>
         <div className="flex flex-shrink-0 items-center gap-1.5">
-          <CopyButton family={slot.family} role={slot.role} />
+          <CopyButton family={slot.family} role={slot.role} label={label} locked={locked} />
           <LockButton locked={locked} onToggle={onToggleLock} />
         </div>
       </aside>

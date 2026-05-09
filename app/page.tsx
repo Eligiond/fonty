@@ -186,6 +186,13 @@ export default function Page() {
   const toggleLock = (role: FontRole) =>
     setLocks((l) => ({ ...l, [role]: !l[role] }));
 
+  const setSlotFont = (role: FontRole, family: string) =>
+    setPairing((p) => ({
+      ...p,
+      id: `pick-${Date.now()}`,
+      slots: p.slots.map((s) => (s.role === role ? { ...s, family } : s)),
+    }));
+
   const onTextChange = (role: FontRole, value: string) => {
     const v = value.trim().length === 0 ? DEFAULT_TEXTS[role] : value;
     setTexts((t) => ({ ...t, [role]: v }));
@@ -313,6 +320,7 @@ export default function Page() {
               setWidths={setMockupWidths}
               onAddSlot={addSlot}
               onRemoveSlot={removeSlot}
+              onFontChange={setSlotFont}
             />
           ) : (
             <GenerateView
@@ -327,6 +335,7 @@ export default function Page() {
               onRemoveSlot={removeSlot}
               onReorderSlots={reorderSlots}
               setPanelOpen={setPanelOpen}
+              onFontChange={setSlotFont}
             />
           )}
         </div>

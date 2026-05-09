@@ -15,6 +15,7 @@ import { cssFamily, type FontPairing, type FontRole, type FontSlot, MIN_SLOTS, M
 import EditableText from "@/components/EditableText";
 import IconButton from "@/components/IconButton";
 import { Tooltip } from "@/components/Tooltip";
+import FontPicker from "@/components/FontPicker";
 import type { Adjustments } from "@/components/SidePanel";
 import type { ViewMode } from "@/components/TopBar";
 
@@ -50,6 +51,8 @@ const stripeForIndex = (idx: number): string => {
 
 export type Texts = Record<FontRole, string>;
 
+type PickerTarget = { role: FontRole; rect: DOMRect };
+
 type Props = {
   pairing: FontPairing;
   locks: Record<FontRole, boolean>;
@@ -62,6 +65,7 @@ type Props = {
   onRemoveSlot: (role: FontRole) => void;
   onReorderSlots: (fromIdx: number, toIdx: number) => void;
   setPanelOpen?: (open: boolean) => void;
+  onFontChange?: (role: FontRole, family: string) => void;
 };
 
 export default function GenerateView({
@@ -76,8 +80,10 @@ export default function GenerateView({
   onRemoveSlot,
   onReorderSlots,
   setPanelOpen,
+  onFontChange,
 }: Props) {
   const slots = pairing.slots;
+  const [pickerTarget, setPickerTarget] = useState<PickerTarget | null>(null);
   const canAdd = slots.length < MAX_SLOTS;
   const canRemove = slots.length > MIN_SLOTS;
   const isHorizontal = viewMode === "horizontal";
@@ -150,18 +156,62 @@ export default function GenerateView({
     window.addEventListener("mouseup", onUp);
   };
 
+  const openPicker = (role: FontRole, rect: DOMRect) => setPickerTarget({ role, rect });
+  const closePicker = () => setPickerTarget(null);
+
+  const picker = pickerTarget && onFontChange ? (
+    <FontPicker
+      currentFamily={pairing.slots.find((s) => s.role === pickerTarget.role)?.family ?? ""}
+      anchorRect={pickerTarget.rect}
+      onSelect={(family) => onFontChange(pickerTarget.role, family)}
+      onClose={closePicker}
+    />
+  ) : null;
+
   if (isHorizontal) {
     return (
+      <>
+        <div
+          className="grid h-full pt-8"
+          style={{
+            gridTemplateRows: slots.length > 0
+              ? `1.15fr repeat(${slots.length - 1}, 1fr)`
+              : "none"
+          }}
+        >
+          {slots.map((slot, idx) => (
+            <Stripe
+              key={slot.role}
+              slot={slot}
+              idx={idx}
+              locked={locks[slot.role]}
+              text={texts[slot.role]}
+              adj={adjustments[slot.role]}
+              canRemove={canRemove}
+              canAdd={canAdd}
+              isLast={idx === slots.length - 1}
+              onTextChange={(v) => onTextChange(slot.role, v)}
+              onToggleLock={() => onToggleLock(slot.role)}
+              onRemove={() => onRemoveSlot(slot.role)}
+              onAddAfter={onAddSlot}
+              onStartReorder={startReorder(idx, "y")}
+              onOpenPicker={onFontChange ? openPicker : undefined}
+            />
+          ))}
+        </div>
+        {picker}
+      </>
+    );
+  }
+
+  return (
+    <>
       <div
-        className="grid h-full pt-8"
-        style={{ 
-          gridTemplateRows: slots.length > 0 
-            ? `1.15fr repeat(${slots.length - 1}, 1fr)` 
-            : "none" 
-        }}
+        className="grid h-full overflow-x-auto"
+        style={{ gridTemplateColumns: `repeat(${slots.length}, minmax(280px, 1fr))` }}
       >
         {slots.map((slot, idx) => (
-          <Stripe
+          <Column
             key={slot.role}
             slot={slot}
             idx={idx}
@@ -175,37 +225,13 @@ export default function GenerateView({
             onToggleLock={() => onToggleLock(slot.role)}
             onRemove={() => onRemoveSlot(slot.role)}
             onAddAfter={onAddSlot}
-            onStartReorder={startReorder(idx, "y")}
+            onStartReorder={startReorder(idx, "x")}
+            onOpenPicker={onFontChange ? openPicker : undefined}
           />
         ))}
       </div>
-    );
-  }
-
-  return (
-    <div
-      className="grid h-full overflow-x-auto"
-      style={{ gridTemplateColumns: `repeat(${slots.length}, minmax(280px, 1fr))` }}
-    >
-      {slots.map((slot, idx) => (
-        <Column
-          key={slot.role}
-          slot={slot}
-          idx={idx}
-          locked={locks[slot.role]}
-          text={texts[slot.role]}
-          adj={adjustments[slot.role]}
-          canRemove={canRemove}
-          canAdd={canAdd}
-          isLast={idx === slots.length - 1}
-          onTextChange={(v) => onTextChange(slot.role, v)}
-          onToggleLock={() => onToggleLock(slot.role)}
-          onRemove={() => onRemoveSlot(slot.role)}
-          onAddAfter={onAddSlot}
-          onStartReorder={startReorder(idx, "x")}
-        />
-      ))}
-    </div>
+      {picker}
+    </>
   );
 }
 
@@ -242,6 +268,7 @@ function Stripe({
   onRemove,
   onAddAfter,
   onStartReorder,
+  onOpenPicker,
 }: {
   slot: FontSlot;
   idx: number;
@@ -256,6 +283,7 @@ function Stripe({
   onRemove: () => void;
   onAddAfter: () => void;
   onStartReorder: (e: React.MouseEvent) => void;
+  onOpenPicker?: (role: FontRole, rect: DOMRect) => void;
 }) {
   const meta = ROLE_TAG[slot.role];
   return (
@@ -294,12 +322,22 @@ function Stripe({
           >
             {meta.tag} · {meta.label}
           </div>
-          <div
-            className="mt-0.5 truncate text-[14px] font-medium"
+          <button
+            onClick={(e) => onOpenPicker?.(slot.role, e.currentTarget.getBoundingClientRect())}
+            className="mt-0.5 truncate text-[14px] font-medium text-left max-w-full -mx-2 px-2 py-0.5 rounded-full transition-all duration-150"
             style={{ fontFamily: cssFamily(slot.family), color: "var(--text)" }}
+            title="Choose font"
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = "color-mix(in oklch, var(--text) 8%, transparent)";
+              e.currentTarget.style.boxShadow = "0 0 0 1px color-mix(in oklch, var(--text) 16%, transparent)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = "transparent";
+              e.currentTarget.style.boxShadow = "none";
+            }}
           >
             {slot.family}
-          </div>
+          </button>
         </div>
         <div className="flex flex-shrink-0 items-center gap-1.5">
           <CopyButton family={slot.family} role={slot.role} />
@@ -307,7 +345,7 @@ function Stripe({
         </div>
       </aside>
 
-      {canAdd && (
+      {canAdd && !isLast && (
         <BoundaryAdd orientation="horizontal" onAdd={onAddAfter} />
       )}
     </section>
@@ -332,6 +370,7 @@ function Column({
   onRemove,
   onAddAfter,
   onStartReorder,
+  onOpenPicker,
 }: {
   slot: FontSlot;
   idx: number;
@@ -346,6 +385,7 @@ function Column({
   onRemove: () => void;
   onAddAfter: () => void;
   onStartReorder: (e: React.MouseEvent) => void;
+  onOpenPicker?: (role: FontRole, rect: DOMRect) => void;
 }) {
   const meta = ROLE_TAG[slot.role];
   return (
@@ -382,16 +422,25 @@ function Column({
           className="min-w-0 overflow-wrap-anywhere break-words"
           style={buildStyle(slot.family, slot.role, adj, VERTICAL_WEIGHT[slot.role])}
         />
-        {canAdd && (
-          <BoundaryAdd orientation="vertical" onAdd={onAddAfter} />
-        )}
       </div>
 
-      <footer
-        className="truncate text-[13px] font-medium"
-        style={{ fontFamily: cssFamily(slot.family), color: "var(--text)" }}
-      >
-        {slot.family}
+      <footer>
+        <button
+          onClick={(e) => onOpenPicker?.(slot.role, e.currentTarget.getBoundingClientRect())}
+          className="truncate text-[13px] font-medium max-w-full text-left -mx-3 px-3 py-1.5 rounded-full transition-all duration-150"
+          style={{ fontFamily: cssFamily(slot.family), color: "var(--text)" }}
+          title="Choose font"
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = "color-mix(in oklch, var(--text) 8%, transparent)";
+            e.currentTarget.style.boxShadow = "0 0 0 1px color-mix(in oklch, var(--text) 16%, transparent)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = "transparent";
+            e.currentTarget.style.boxShadow = "none";
+          }}
+        >
+          {slot.family}
+        </button>
       </footer>
 
       {/* Action stack — below header, above text center */}
@@ -403,6 +452,9 @@ function Column({
           onStartReorder={onStartReorder}
         />
       </div>
+      {canAdd && !isLast && (
+        <BoundaryAdd orientation="vertical" onAdd={onAddAfter} />
+      )}
     </section>
   );
 }
@@ -458,6 +510,22 @@ function SlotActionStack({
    - orientation="vertical"   → for horizontal view (between cols): vertical hover strip
    ──────────────────────────────────────────────────────────── */
 
+function AddButton({ onAdd }: { onAdd: () => void }) {
+  return (
+    <button
+      onClick={onAdd}
+      aria-label="Add font"
+      title="Add font"
+      className="flex items-center justify-center w-8 h-8 rounded-full transition-all duration-150 active:scale-95"
+      style={{ background: "var(--text)", color: "var(--bg)" }}
+      onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.opacity = "0.65"; }}
+      onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.opacity = "1"; }}
+    >
+      <PlusSignIcon size={18} />
+    </button>
+  );
+}
+
 function BoundaryAdd({
   orientation,
   onAdd,
@@ -465,27 +533,20 @@ function BoundaryAdd({
   orientation: "horizontal" | "vertical";
   onAdd: () => void;
 }) {
-  // The hover zone straddles the boundary between this slot and the next.
-  // Horizontal orientation = a thin band along the bottom edge (between rows).
-  // Vertical orientation = a thin band along the right edge (between columns).
   if (orientation === "horizontal") {
     return (
       <div className="pointer-events-none absolute -bottom-2 left-6 right-[294px] md:left-10 md:right-[310px] z-30 flex h-4 items-center justify-center">
         <div className="pointer-events-auto opacity-0 transition-opacity duration-200 group-hover:opacity-100">
-          <IconButton onClick={onAdd} ariaLabel="Add font" title="Add font">
-            <PlusSignIcon size={18} />
-          </IconButton>
+          <AddButton onAdd={onAdd} />
         </div>
       </div>
     );
   }
 
   return (
-    <div className="pointer-events-none absolute -right-6 md:-right-12 inset-y-0 z-30 flex w-7 items-center justify-center translate-x-1/2">
+    <div className="pointer-events-none absolute right-0 translate-x-1/2 inset-y-0 z-30 flex w-7 items-center justify-center">
       <div className="pointer-events-auto opacity-0 transition-opacity duration-200 group-hover:opacity-100">
-        <IconButton onClick={onAdd} ariaLabel="Add font" title="Add font">
-          <PlusSignIcon size={18} />
-        </IconButton>
+        <AddButton onAdd={onAdd} />
       </div>
     </div>
   );

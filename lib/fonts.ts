@@ -1099,6 +1099,11 @@ const buildSlots = (heading: string, subheading: string, body: string, caption: 
   { role: "caption", family: caption },
 ];
 
+export const FONT_CATALOGUE: { family: string; vibe: string }[] =
+  Object.entries(FONT_VIBES)
+    .map(([family, vibe]) => ({ family, vibe }))
+    .sort((a, b) => a.family.localeCompare(b.family));
+
 export const FONT_PAIRINGS: FontPairing[] = [
   { id: "fonty-default",      vibe: "Next-gen pairing", slots: buildSlots("Space Grotesk",        "Montserrat",        "Karla") },
   { id: "editorial-classic",  vibe: "Editorial",        slots: buildSlots("Playfair Display",     "Source Sans 3",     "Lato") },
