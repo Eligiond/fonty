@@ -8,14 +8,17 @@ import {
   CodeIcon,
   DocumentCodeIcon,
   SecondBracketIcon,
+  Html5Icon,
   Tick02Icon,
 } from "@hugeicons/react";
-import type { FontPairing } from "@/lib/fonts";
+import type { FontPairing, FontRole } from "@/lib/fonts";
+import { cssFamily } from "@/lib/fonts";
 import {
   buildShareUrl,
   buildCssSnippet,
   buildJsonExport,
   buildTailwindConfig,
+  buildHtmlExport,
 } from "@/lib/share";
 import { generateSpecimenPdf, downloadBlob } from "@/lib/pdf";
 import type { Texts } from "./GenerateView";
@@ -28,7 +31,7 @@ type Props = {
   accentColor?: string | null;
 };
 
-type ExportKey = "pdf" | "url" | "css" | "tailwind" | "json";
+type ExportKey = "pdf" | "url" | "html" | "css" | "tailwind" | "json";
 
 const ITEMS: {
   key: ExportKey;
@@ -38,10 +41,13 @@ const ITEMS: {
 }[] = [
   { key: "pdf",      label: "PDF",      hint: "Specimen sheet",       Icon: Pdf02Icon },
   { key: "url",      label: "URL",      hint: "Shareable link",       Icon: Link04Icon },
+  { key: "html",     label: "HTML",     hint: "Standalone page",      Icon: Html5Icon },
   { key: "css",      label: "CSS",      hint: "@import + variables",  Icon: CodeIcon },
   { key: "tailwind", label: "Tailwind", hint: "tailwind.config.ts",   Icon: DocumentCodeIcon },
   { key: "json",     label: "JSON",     hint: "Pairing object",       Icon: SecondBracketIcon },
 ];
+
+const TITLE_ROLE_PRIORITY: FontRole[] = ["heading", "subheading", "body", "caption"];
 
 export default function ExportMenu({ open, onClose, pairing, texts, accentColor }: Props) {
   const [confirmed, setConfirmed] = useState<ExportKey | null>(null);
@@ -61,6 +67,10 @@ export default function ExportMenu({ open, onClose, pairing, texts, accentColor 
   }, [open, onClose]);
 
   if (!open) return null;
+
+  const titleSlot = TITLE_ROLE_PRIORITY.map((role) =>
+    pairing.slots.find((s) => s.role === role),
+  ).find((s) => s !== undefined);
 
   const flash = (key: ExportKey) => {
     setConfirmed(key);
@@ -99,6 +109,11 @@ export default function ExportMenu({ open, onClose, pairing, texts, accentColor 
           flash("json");
           break;
         }
+        case "html": {
+          await navigator.clipboard.writeText(buildHtmlExport(pairing, texts));
+          flash("html");
+          break;
+        }
       }
     } catch {
       // Silent fail; clipboard / pdf may be blocked
@@ -125,7 +140,12 @@ export default function ExportMenu({ open, onClose, pairing, texts, accentColor 
           className="flex items-center justify-between border-b px-6 py-4"
           style={{ borderColor: "var(--border)" }}
         >
-          <h2 className="font-logo text-xl tracking-tight">Export Pairing</h2>
+          <h2
+            className="text-[22px] font-bold tracking-tight leading-none truncate"
+            style={titleSlot ? { fontFamily: cssFamily(titleSlot.family) } : undefined}
+          >
+            Export Pairing
+          </h2>
           <button
             onClick={onClose}
             aria-label="Close"
@@ -154,15 +174,15 @@ export default function ExportMenu({ open, onClose, pairing, texts, accentColor 
                   }}
                 >
                   <span
-                    className="flex h-10 w-10 items-center justify-center transition-transform duration-200 ease-[cubic-bezier(0.23,1,0.32,1)] group-hover:scale-110"
+                    className="flex h-14 w-14 items-center justify-center transition-transform duration-200 ease-[cubic-bezier(0.23,1,0.32,1)] group-hover:scale-110"
                     style={{ color: "var(--text)" }}
                   >
                     {isConfirmed ? (
-                      <Tick02Icon size={26} />
+                      <Tick02Icon size={40} />
                     ) : isBusy ? (
-                      <span className="h-5 w-5 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                      <span className="h-7 w-7 animate-spin rounded-full border-2 border-current border-t-transparent" />
                     ) : (
-                      <Icon size={26} />
+                      <Icon size={40} strokeWidth={1.6} />
                     )}
                   </span>
                   <span className="flex flex-col items-center leading-tight">
@@ -198,5 +218,6 @@ function confirmedCopy(key: ExportKey): string {
     case "css":      return "Copied";
     case "tailwind": return "Copied";
     case "json":     return "Copied";
+    case "html":     return "Copied";
   }
 }
