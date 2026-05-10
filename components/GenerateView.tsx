@@ -104,11 +104,6 @@ export default function GenerateView({
     };
 
     window.addEventListener("resize", handleResize);
-    // Initial check
-    if (window.innerWidth < 1200) {
-      setPanelOpen?.(false);
-    }
-    
     return () => window.removeEventListener("resize", handleResize);
   }, [isHorizontal, setPanelOpen, lastWidth]);
 
