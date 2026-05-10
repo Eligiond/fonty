@@ -9,6 +9,7 @@ import {
   GithubIcon,
   Linkedin01Icon,
   Tick02Icon,
+  Cancel01Icon,
 } from "@hugeicons/react";
 import type { FontPairing, FontRole } from "@/lib/fonts";
 import { Tooltip } from "./Tooltip";
@@ -160,7 +161,10 @@ export default function SidePanel({
         )}
 
         {/* Tabs at top */}
-        <div className="px-3 pt-4 pb-3">
+        <div
+          className="px-4 h-12 flex items-center justify-center border-b"
+          style={{ borderColor: "var(--border)" }}
+        >
           <PanelTabs tab={tab} onChange={onTabChange} />
         </div>
 
@@ -204,43 +208,29 @@ function PanelTabs({ tab, onChange }: { tab: PanelTab; onChange: (t: PanelTab) =
     <div
       role="tablist"
       aria-label="Panel sections"
-      className="inline-flex w-full items-center gap-0.5 rounded-full p-0.5"
-      style={{
-        background: "var(--surface-muted)",
-        boxShadow: "inset 0 0 0 1px color-mix(in oklch, var(--border) 60%, transparent)",
-      }}
+      className="flex items-center gap-5"
     >
-      <TabPill active={tab === "adjust"} onClick={() => onChange("adjust")} label="Adjust" />
-      <TabPill active={tab === "saved"} onClick={() => onChange("saved")} label="Saved" />
+      <TabText active={tab === "saved"} onClick={() => onChange("saved")} label="Library" />
+      <TabText active={tab === "adjust"} onClick={() => onChange("adjust")} label="Adjust" />
     </div>
   );
 }
 
-function TabPill({ active, onClick, label }: { active: boolean; onClick: () => void; label: string }) {
+function TabText({ active, onClick, label }: { active: boolean; onClick: () => void; label: string }) {
   return (
     <button
       role="tab"
       aria-selected={active}
       onClick={onClick}
-      className="group relative flex-1 inline-flex items-center justify-center h-8 rounded-full px-3 text-[12px] font-bold transition-all duration-200 ease-[cubic-bezier(0.23,1,0.32,1)] active:scale-[0.97] hover:scale-[1.02]"
+      className="text-[13px] font-bold tracking-tight transition-colors duration-200 ease-[cubic-bezier(0.23,1,0.32,1)] outline-none"
       style={{
-        background: active ? "var(--surface)" : "transparent",
         color: active ? "var(--text)" : "var(--text-muted)",
-        boxShadow: active
-          ? "0 1px 2px rgba(0,0,0,0.06), 0 0 0 1px var(--border)"
-          : "none",
       }}
       onMouseEnter={(e) => {
-        if (!active) {
-          e.currentTarget.style.background = "color-mix(in oklch, var(--surface) 40%, transparent)";
-          e.currentTarget.style.color = "var(--text)";
-        }
+        if (!active) e.currentTarget.style.color = "var(--text)";
       }}
       onMouseLeave={(e) => {
-        if (!active) {
-          e.currentTarget.style.background = "transparent";
-          e.currentTarget.style.color = "var(--text-muted)";
-        }
+        if (!active) e.currentTarget.style.color = "var(--text-muted)";
       }}
     >
       {label}
@@ -269,7 +259,7 @@ function SavedListView({
 }) {
   return (
     <div className="flex h-full flex-col">
-      <div className="flex-1 overflow-y-auto px-3 pb-3">
+      <div className="flex-1 overflow-y-auto px-3 pt-4 pb-3">
         {saved.length === 0 ? (
           <p className="px-3 py-6 text-[12px] leading-relaxed" style={{ color: "var(--text-muted)" }}>
             Hit Save on a pairing you like.
@@ -313,6 +303,7 @@ function SavedRow({
   const [draft, setDraft] = useState(item.name);
   const [menuOpen, setMenuOpen] = useState(false);
   const [menuCoords, setMenuCoords] = useState({ top: 0, left: 0 });
+  const [confirmOpen, setConfirmOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const rowRef = useRef<HTMLDivElement>(null);
   const menuContainerRef = useRef<HTMLDivElement>(null);
@@ -401,7 +392,7 @@ function SavedRow({
           <div className="flex items-center gap-1">
             {active && (
               <button
-                onClick={(e) => { e.stopPropagation(); onDelete(); }}
+                onClick={(e) => { e.stopPropagation(); setConfirmOpen(true); }}
                 aria-label="Delete pairing"
                 className="flex h-6 w-6 flex-none items-center justify-center rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-150 hover:bg-black/10"
                 style={{ color: textColor }}
@@ -489,7 +480,127 @@ function SavedRow({
         </div>,
         document.body
       )}
+
+      <ConfirmDeleteDialog
+        open={confirmOpen}
+        itemName={item.name}
+        onCancel={() => setConfirmOpen(false)}
+        onConfirm={() => { setConfirmOpen(false); onDelete(); }}
+      />
     </li>
+  );
+}
+
+/* ────────────────────────────────────────────────────────────
+   Confirm delete dialog
+   ──────────────────────────────────────────────────────────── */
+
+function ConfirmDeleteDialog({
+  open,
+  itemName,
+  onCancel,
+  onConfirm,
+}: {
+  open: boolean;
+  itemName: string;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") { e.preventDefault(); onCancel(); }
+      if (e.key === "Enter") { e.preventDefault(); onConfirm(); }
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [open, onCancel, onConfirm]);
+
+  if (!open) return null;
+  if (typeof document === "undefined") return null;
+
+  return createPortal(
+    <div
+      className="fixed inset-0 z-[1200] flex items-center justify-center bg-black/25 p-4 backdrop-blur-sm animate-in fade-in duration-200"
+      onClick={onCancel}
+      role="presentation"
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby="fonty-confirm-delete-title"
+        className="w-full max-w-[420px] overflow-hidden rounded-3xl border shadow-2xl animate-in zoom-in-95 slide-in-from-bottom-4 duration-300 ease-out"
+        style={{
+          background: "var(--surface)",
+          borderColor: "var(--border)",
+          color: "var(--text)",
+        }}
+      >
+        <header
+          className="relative flex items-center justify-center border-b px-6 py-4"
+          style={{ borderColor: "var(--border)" }}
+        >
+          <h2
+            id="fonty-confirm-delete-title"
+            className="text-[15px] font-bold tracking-tight"
+          >
+            Delete pairing
+          </h2>
+          <button
+            onClick={onCancel}
+            aria-label="Close"
+            className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-1.5 transition-colors hover:bg-[color:var(--bg)]"
+            style={{ color: "var(--text-muted)" }}
+          >
+            <Cancel01Icon size={18} />
+          </button>
+        </header>
+
+        <div className="px-6 py-6">
+          <p className="text-[14px] leading-relaxed" style={{ color: "var(--text)" }}>
+            Are you sure you want to delete{" "}
+            <span className="font-semibold">&ldquo;{itemName}&rdquo;</span>?
+          </p>
+          <p
+            className="mt-1.5 text-[12.5px] leading-relaxed"
+            style={{ color: "var(--text-muted)" }}
+          >
+            This can&rsquo;t be undone.
+          </p>
+        </div>
+
+        <footer
+          className="flex items-center gap-2 border-t px-4 py-3"
+          style={{ borderColor: "var(--border)" }}
+        >
+          <button
+            onClick={onCancel}
+            autoFocus
+            className="flex-1 inline-flex items-center justify-center h-10 rounded-xl text-[13px] font-bold tracking-tight transition-[transform,background-color] duration-200 ease-[cubic-bezier(0.23,1,0.32,1)] hover:-translate-y-px hover:bg-[color:var(--surface-muted)] active:scale-[0.98]"
+            style={{
+              background: "transparent",
+              color: "var(--text)",
+              boxShadow: "inset 0 0 0 1px var(--border)",
+            }}
+          >
+            Cancel
+          </button>
+          <button
+            onClick={onConfirm}
+            className="flex-1 inline-flex items-center justify-center h-10 rounded-xl text-[13px] font-bold tracking-tight transition-[transform,box-shadow,opacity] duration-200 ease-[cubic-bezier(0.23,1,0.32,1)] hover:-translate-y-px hover:opacity-95 hover:shadow-[0_8px_18px_rgba(239,68,68,0.28)] active:scale-[0.98]"
+            style={{
+              background: "#ef4444",
+              color: "#ffffff",
+              boxShadow: "0 2px 6px rgba(239,68,68,0.25)",
+            }}
+          >
+            Delete
+          </button>
+        </footer>
+      </div>
+    </div>,
+    document.body
   );
 }
 
@@ -515,7 +626,7 @@ function AdjustView({
 
   return (
     <div className="h-full overflow-y-auto">
-      <div className="flex flex-col gap-10 px-5 pb-10 pt-2">
+      <div className="flex flex-col gap-10 px-5 pb-10 pt-4">
         {roles.map((role, idx) => {
           const cfg = ROLE_CONFIG[role];
           const adj = values[role];
@@ -717,7 +828,7 @@ function Footer({ open, onOpenSettings }: { open: boolean; onOpenSettings: () =>
               onClick={onOpenSettings}
               aria-label="Settings"
               className="group flex w-full h-8 items-center justify-start gap-1.5 rounded-lg px-3 text-[12px] font-medium transition-colors duration-150 ease-out hover:bg-[color:var(--bg)]"
-              style={{ color: "var(--text-muted)" }}
+              style={{ color: "var(--text)" }}
             >
               <Settings01Icon size={18} className="transition-transform duration-300 ease-[cubic-bezier(0.23,1,0.32,1)] group-hover:rotate-45" />
               Settings
@@ -738,7 +849,7 @@ function Footer({ open, onOpenSettings }: { open: boolean; onOpenSettings: () =>
             onClick={onOpenSettings}
             aria-label="Settings"
             className={`group ${RAIL_BTN_CLASS}`}
-            style={{ color: "var(--text-muted)" }}
+            style={{ color: "var(--text)" }}
           >
             <Settings01Icon size={18} className="transition-transform duration-300 ease-[cubic-bezier(0.23,1,0.32,1)] group-hover:rotate-45" />
           </button>
@@ -764,9 +875,7 @@ function SocialLink({
       rel="noreferrer"
       aria-label={label}
       className="group rounded-lg p-1.5 transition-all duration-150 ease-out hover:bg-[color:var(--bg)] hover:scale-110 active:scale-95"
-      style={{ color: "var(--text-muted)" }}
-      onMouseEnter={(e) => { e.currentTarget.style.color = "var(--text)"; }}
-      onMouseLeave={(e) => { e.currentTarget.style.color = "var(--text-muted)"; }}
+      style={{ color: "var(--text)" }}
     >
       {children}
     </a>

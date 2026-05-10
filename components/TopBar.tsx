@@ -11,8 +11,8 @@ import {
   ArrowTurnBackwardIcon,
   ArrowTurnForwardIcon,
   SlidersHorizontalIcon,
-  Hamburger02Icon,
-  Upload01Icon,
+  Menu01Icon,
+  Upload04Icon,
 } from "@hugeicons/react";
 import { getContrastText } from "@/lib/colors";
 import { Tooltip } from "./Tooltip";
@@ -96,17 +96,17 @@ export default function TopBar({
           onClick={onRoll}
           tabIndex={-1}
           className="group flex items-center gap-1.5 text-[12px] font-bold select-none outline-none"
-          style={{ color: "var(--text-muted)" }}
+          style={{ color: "var(--text)" }}
         >
-          <span className={`${isDark ? "opacity-80" : "opacity-60"} group-hover:opacity-100 transition-opacity duration-300`}>
+          <span className={`${isDark ? "opacity-90" : "opacity-75"} group-hover:opacity-100 transition-opacity duration-300`}>
             Press
           </span>
           <span
-            className="inline-flex items-center justify-center px-2 py-0.5 rounded border border-[var(--border)] bg-[var(--surface-muted)] text-[12px] font-bold shadow-sm transition-all duration-300 ease-[cubic-bezier(0.23,1,0.32,1)] group-hover:scale-110 group-hover:bg-[var(--surface)] group-hover:text-[var(--text)] group-hover:shadow-md group-active:scale-95"
+            className="inline-flex items-center justify-center px-2 py-0.5 rounded border border-[var(--border)] bg-[var(--surface-muted)] text-[var(--text)] text-[12px] font-bold shadow-sm transition-all duration-300 ease-[cubic-bezier(0.23,1,0.32,1)] group-hover:scale-110 group-hover:bg-[var(--surface)] group-hover:shadow-md group-active:scale-95"
           >
             SPACEBAR
           </span>
-          <span className={`${isDark ? "opacity-80" : "opacity-60"} group-hover:opacity-100 transition-opacity duration-300`}>
+          <span className={`${isDark ? "opacity-90" : "opacity-75"} group-hover:opacity-100 transition-opacity duration-300`}>
             to generate font pairs
           </span>
         </button>
@@ -192,7 +192,7 @@ export default function TopBar({
               active={exportOpen}
               customColor={activeColor}
             >
-              <Upload01Icon
+              <Upload04Icon
                 size={16}
                 className="transition-transform group-hover:-translate-y-0.5"
               />
@@ -233,9 +233,9 @@ export default function TopBar({
             onClick={onOpenDashboard}
             aria-label="Dashboard"
             icon={
-              <Hamburger02Icon
+              <Menu01Icon
                 size={20}
-                className="transition-transform duration-300 ease-[cubic-bezier(0.23,1,0.32,1)] group-hover:rotate-90"
+                className={`transition-transform duration-300 ease-[cubic-bezier(0.23,1,0.32,1)] ${dashboardActive ? "rotate-90" : ""}`}
               />
             }
           />
@@ -322,7 +322,7 @@ function ViewPill({
       className={`group inline-flex h-9 w-9 items-center justify-center rounded-lg transition-[background-color,color,box-shadow] duration-200 ease-[cubic-bezier(0.23,1,0.32,1)] ${
         active
           ? "bg-[var(--bg)] text-[var(--text)] shadow-[0_1px_2px_rgba(0,0,0,0.08),inset_0_0_0_1px_var(--border)]"
-          : "text-[var(--text-muted)] hover:bg-[var(--surface-muted)] hover:text-[var(--text)]"
+          : "text-[var(--text)] hover:bg-[var(--surface-muted)]"
       }`}
     >
       <span className="transition-transform duration-200 ease-[cubic-bezier(0.23,1,0.32,1)] group-hover:scale-110">
@@ -352,10 +352,10 @@ function IconButton({
       {...rest}
       className={`group inline-flex h-9 w-9 items-center justify-center rounded-lg transition-[background-color,color,box-shadow,opacity] duration-200 ease-[cubic-bezier(0.23,1,0.32,1)] ${
         disabled
-          ? "opacity-30 cursor-not-allowed text-[var(--text-muted)]"
+          ? "opacity-30 cursor-not-allowed text-[var(--text)]"
           : active
             ? "bg-[var(--bg)] text-[var(--text)] shadow-[0_1px_2px_rgba(0,0,0,0.08),inset_0_0_0_1px_var(--border)]"
-            : "text-[var(--text-muted)] hover:bg-[var(--surface-muted)] hover:text-[var(--text)]"
+            : "text-[var(--text)] hover:bg-[var(--surface-muted)]"
       }`}
     >
       {icon}
