@@ -827,7 +827,7 @@ function Footer({ open, onOpenSettings }: { open: boolean; onOpenSettings: () =>
             <button
               onClick={onOpenSettings}
               aria-label="Settings"
-              className="group flex w-full h-8 items-center justify-start gap-1.5 rounded-lg px-3 text-[12px] font-medium transition-colors duration-150 ease-out hover:bg-[color:var(--bg)]"
+              className="group flex w-full h-8 items-center justify-start gap-1.5 rounded-lg px-3 text-[13px] font-bold tracking-tight transition-colors duration-150 ease-out hover:bg-[color:var(--bg)]"
               style={{ color: "var(--text)" }}
             >
               <Settings01Icon size={18} className="transition-transform duration-300 ease-[cubic-bezier(0.23,1,0.32,1)] group-hover:rotate-45" />

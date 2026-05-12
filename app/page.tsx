@@ -111,9 +111,19 @@ export default function Page() {
     panelTab, setPanelTab,
     panelWidth, setPanelWidth,
     viewMode, setViewMode,
+    websiteAutoOpened, setWebsiteAutoOpened,
     mockupOffsets, setMockupOffsets,
     mockupWidths, setMockupWidths,
   } = usePreferences();
+
+  // First time the user enters website view, auto-open the dashboard.
+  // If they close it, the flag stays set so it never auto-opens again.
+  useEffect(() => {
+    if (viewMode === "scroll" && !websiteAutoOpened) {
+      setPanelOpen(true);
+      setWebsiteAutoOpened(true);
+    }
+  }, [viewMode, websiteAutoOpened, setPanelOpen, setWebsiteAutoOpened]);
 
   const {
     saved,
@@ -213,8 +223,6 @@ export default function Page() {
     [pairing, commitPairing],
   );
 
-  useKeyboardShortcuts({ roll, setPanelOpen, setSettingsOpen });
-
   const toggleLock = (role: FontRole) =>
     setLocks((l) => ({ ...l, [role]: !l[role] }));
 
@@ -244,14 +252,15 @@ export default function Page() {
     setActiveSavedId(null);
   }, [historyCursor, history, locks, setActiveSavedId]);
 
-  const onOpenAdjust = useCallback(() => {
-    if (panelOpen && panelTab === "adjust") {
-      setPanelOpen(false);
-    } else {
-      setPanelTab("adjust");
-      setPanelOpen(true);
-    }
-  }, [panelOpen, panelTab, setPanelOpen, setPanelTab]);
+  useKeyboardShortcuts({
+    roll,
+    setPanelOpen,
+    setSettingsOpen,
+    onUndo,
+    onRedo,
+    canUndo,
+    canRedo,
+  });
 
   const onOpenDashboard = useCallback(() => {
     setPanelOpen((v) => !v);
@@ -365,10 +374,8 @@ export default function Page() {
           onRedo={onRedo}
           canUndo={canUndo}
           canRedo={canRedo}
-          onOpenAdjust={onOpenAdjust}
           onOpenDashboard={onOpenDashboard}
           panelOpen={panelOpen}
-          panelTab={panelTab}
           pairing={pairing}
           texts={texts}
         />

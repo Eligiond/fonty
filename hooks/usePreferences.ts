@@ -13,10 +13,11 @@ const PREFS_KEY = "fonty:prefs";
 export function usePreferences() {
   const [themeId, setThemeId] = useState<ThemeId>("blanc");
   const [isDark, setIsDark] = useState(false);
-  const [panelOpen, setPanelOpen] = useState(true);
+  const [panelOpen, setPanelOpen] = useState(false);
   const [panelTab, setPanelTab] = useState<PanelTab>("adjust");
   const [panelWidth, setPanelWidth] = useState(PANEL_DEFAULT);
   const [viewMode, setViewMode] = useState<ViewMode>("horizontal");
+  const [websiteAutoOpened, setWebsiteAutoOpened] = useState(false);
   const [mockupOffsets, setMockupOffsets] = useState<Record<string, number>>({
     heading: 0,
     subheading: 0,
@@ -35,7 +36,6 @@ export function usePreferences() {
         const prefs = JSON.parse(raw);
         if (prefs.themeId) setThemeId(prefs.themeId);
         if (typeof prefs.isDark === "boolean") setIsDark(prefs.isDark);
-        if (typeof prefs.panelOpen === "boolean") setPanelOpen(prefs.panelOpen);
         if (prefs.panelTab === "saved" || prefs.panelTab === "adjust") {
           setPanelTab(prefs.panelTab);
         }
@@ -45,6 +45,9 @@ export function usePreferences() {
           // Default to the height of a standard stripe in horizontal view: (H - pt-8) / 4.15
           const calculatedWidth = Math.round((window.innerHeight - 32) / 4.15);
           setPanelWidth(Math.max(PANEL_MIN, Math.min(PANEL_MAX, calculatedWidth)));
+        }
+        if (typeof prefs.websiteAutoOpened === "boolean") {
+          setWebsiteAutoOpened(prefs.websiteAutoOpened);
         }
       }
     } catch {}
@@ -56,11 +59,12 @@ export function usePreferences() {
         PREFS_KEY,
         JSON.stringify({
           themeId, isDark,
-          panelOpen, panelTab, panelWidth,
+          panelTab, panelWidth,
+          websiteAutoOpened,
         }),
       );
     } catch {}
-  }, [themeId, isDark, panelOpen, panelTab, panelWidth]);
+  }, [themeId, isDark, panelTab, panelWidth, websiteAutoOpened]);
 
   return {
     themeId, setThemeId,
@@ -69,6 +73,7 @@ export function usePreferences() {
     panelTab, setPanelTab,
     panelWidth, setPanelWidth,
     viewMode, setViewMode,
+    websiteAutoOpened, setWebsiteAutoOpened,
     mockupOffsets, setMockupOffsets,
     mockupWidths, setMockupWidths,
   };

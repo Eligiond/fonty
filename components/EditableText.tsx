@@ -64,7 +64,7 @@ export default function EditableText({
         const text = e.clipboardData.getData("text/plain");
         document.execCommand("insertText", false, text);
       }}
-      className={`cursor-text rounded-sm outline-none transition-[background-color,box-shadow] duration-150 focus:bg-[color:var(--surface)]/40 focus:shadow-[inset_0_0_0_1px_var(--border)] ${className ?? ""}`}
+      className={`cursor-text rounded-sm outline-none transition-[background-color,box-shadow] duration-150 focus:bg-[color:var(--surface)]/40 focus:shadow-[inset_0_0_0_1px_var(--border)] py-[0.25em] -my-[0.25em] ${className ?? ""}`}
       style={style}
     />
   );

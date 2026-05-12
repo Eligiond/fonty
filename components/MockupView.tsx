@@ -129,7 +129,7 @@ export default function MockupView({
         className="flex h-full w-full flex-col overflow-y-auto overflow-x-hidden select-none"
         style={{ background: "var(--bg)", color: "var(--text)" }}
       >
-        <div className="w-full px-12 flex flex-col flex-1 py-32 md:py-48 gap-16">
+        <div className="w-full min-h-full px-12 flex flex-col justify-center py-12 gap-12">
           {slots.map((slot, idx) => (
             <FontBlock
               key={slot.role}
@@ -240,7 +240,7 @@ function FontBlock({
     window.addEventListener("mouseup", onUp);
   };
 
-  const CHROME_RESERVE_PX = 320;
+  const CHROME_RESERVE_PX = 350;
 
   return (
     <div
@@ -323,10 +323,10 @@ function FontBlock({
       <div className="flex-1" style={{ minWidth: `${HANDLE_INFO_MIN_GAP}px` }} />
 
       {/* Font Information */}
-      <aside ref={infoRef} className="flex flex-shrink-0 items-center gap-3 text-right">
-        <div className="w-[140px]">
+      <aside ref={infoRef} className="relative z-20 flex flex-shrink-0 items-center gap-3 text-right" style={{ background: "var(--bg)" }}>
+        <div className="w-[170px]">
           <div
-            className="text-[13px] uppercase tracking-[0.16em] opacity-80 truncate"
+            className="text-[13px] uppercase tracking-[0.16em] opacity-80 whitespace-nowrap"
             style={{ color: "var(--text)" }}
           >
             {label}

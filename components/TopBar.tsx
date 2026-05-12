@@ -10,7 +10,6 @@ import {
   ScrollIcon,
   ArrowTurnBackwardIcon,
   ArrowTurnForwardIcon,
-  SlidersHorizontalIcon,
   Menu01Icon,
   Upload04Icon,
 } from "@hugeicons/react";
@@ -42,10 +41,8 @@ type Props = {
   canRedo: boolean;
 
   // Side panel openers
-  onOpenAdjust: () => void;
   onOpenDashboard: () => void;
   panelOpen: boolean;
-  panelTab: "saved" | "adjust";
 
   // Roll (used by spacebar hint)
   onRoll?: () => void;
@@ -68,22 +65,19 @@ export default function TopBar({
   onRedo,
   canUndo,
   canRedo,
-  onOpenAdjust,
   onOpenDashboard,
   panelOpen,
-  panelTab,
   onRoll,
   pairing,
   texts,
 }: Props) {
   const [exportOpen, setExportOpen] = useState(false);
 
-  const adjustActive = panelOpen && panelTab === "adjust";
   const dashboardActive = panelOpen;
 
   return (
     <div
-      className="flex h-16 items-center justify-between px-6 relative border-b"
+      className="grid h-16 grid-cols-[1fr_auto_1fr] items-center px-6 relative border-b"
       style={{
         color: "var(--text)",
         background: "var(--surface)",
@@ -95,43 +89,32 @@ export default function TopBar({
         <button
           onClick={onRoll}
           tabIndex={-1}
-          className="group flex items-center gap-1.5 text-[12px] font-bold select-none outline-none"
+          className="group flex items-center gap-1.5 text-[13px] font-bold tracking-tight select-none outline-none"
           style={{ color: "var(--text)" }}
         >
-          <span className={`${isDark ? "opacity-90" : "opacity-75"} group-hover:opacity-100 transition-opacity duration-300`}>
-            Press
-          </span>
+          <span>Press</span>
           <span
-            className="inline-flex items-center justify-center px-2 py-0.5 rounded border border-[var(--border)] bg-[var(--surface-muted)] text-[var(--text)] text-[12px] font-bold shadow-sm transition-all duration-300 ease-[cubic-bezier(0.23,1,0.32,1)] group-hover:scale-110 group-hover:bg-[var(--surface)] group-hover:shadow-md group-active:scale-95"
+            className="inline-flex items-center justify-center px-2 py-0.5 rounded border text-[13px] font-bold tracking-tight shadow-sm transition-all duration-300 ease-[cubic-bezier(0.23,1,0.32,1)] group-hover:scale-110 group-hover:shadow-md group-active:scale-95"
+            style={{
+              background: activeColor || "var(--surface-muted)",
+              color: activeColor ? getContrastText(activeColor) : "var(--text)",
+              borderColor: activeColor || "var(--border)",
+            }}
           >
             SPACEBAR
           </span>
-          <span className={`${isDark ? "opacity-90" : "opacity-75"} group-hover:opacity-100 transition-opacity duration-300`}>
-            to generate font pairs
-          </span>
+          <span>to generate font pairs</span>
         </button>
       </div>
 
-      {/* RIGHT — sections separated by | */}
-      <div className="flex items-center gap-2">
-        {/* Section 1a — View toggle */}
+      {/* CENTER — view toggle */}
+      <div className="flex items-center justify-center">
         <ViewToggle viewMode={viewMode} setViewMode={setViewMode} />
+      </div>
 
-        <Divider />
-
-        {/* Section 1b — Adjust */}
-        <Tooltip label={adjustActive ? "Close adjust" : "Adjust typography"} direction="bottom">
-          <IconButton
-            active={adjustActive}
-            onClick={onOpenAdjust}
-            aria-label="Adjust"
-            icon={<SlidersHorizontalIcon size={18} />}
-          />
-        </Tooltip>
-
-        <Divider />
-
-        {/* Section 2 — Undo / Redo */}
+      {/* RIGHT — history, actions, dashboard */}
+      <div className="flex items-center justify-end gap-2">
+        {/* Section 1 — Undo / Redo */}
         <div className="flex items-center gap-0.5">
           <Tooltip label="Step back" direction="bottom">
             <IconButton

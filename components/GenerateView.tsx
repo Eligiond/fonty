@@ -309,10 +309,17 @@ function Stripe({
         onStartReorder={onStartReorder}
       />
 
-      <aside className="flex flex-shrink-0 items-center gap-3 text-right">
-        <div className="w-[140px]">
+      <aside
+        className="relative z-20 flex flex-shrink-0 items-center gap-3 text-right"
+        style={{
+          background: locked
+            ? `color-mix(in oklch, var(--accent) 4%, ${stripeForIndex(idx)})`
+            : stripeForIndex(idx),
+        }}
+      >
+        <div className="w-[170px]">
           <div
-            className="text-[13px] uppercase tracking-[0.16em] opacity-80 truncate"
+            className="text-[13px] uppercase tracking-[0.16em] opacity-80 whitespace-nowrap"
             style={{ color: "var(--text)" }}
           >
             {meta.tag} · {meta.label}
