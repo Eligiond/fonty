@@ -1,6 +1,6 @@
 "use client";
 
-import { forwardRef, useState } from "react";
+import { forwardRef } from "react";
 import {
   Bookmark02Icon,
   Copy01Icon,
@@ -12,12 +12,10 @@ import {
   ArrowTurnForwardIcon,
   Menu01Icon,
   Upload04Icon,
+  GeometricShapes01Icon,
 } from "@hugeicons/react";
 import { getContrastText } from "@/lib/colors";
 import { Tooltip } from "./Tooltip";
-import ExportMenu from "./ExportMenu";
-import type { FontPairing } from "@/lib/fonts";
-import type { Texts } from "./GenerateView";
 
 export type ViewMode = "vertical" | "horizontal" | "scroll";
 
@@ -44,12 +42,16 @@ type Props = {
   onOpenDashboard: () => void;
   panelOpen: boolean;
 
+  // Visualize panel
+  onVisualize: () => void;
+  visualizeOpen: boolean;
+
   // Roll (used by spacebar hint)
   onRoll?: () => void;
 
-  // Export payload
-  pairing: FontPairing;
-  texts: Texts;
+  // Export
+  onOpenExport: () => void;
+  exportOpen: boolean;
 };
 
 export default function TopBar({
@@ -67,12 +69,12 @@ export default function TopBar({
   canRedo,
   onOpenDashboard,
   panelOpen,
+  onVisualize,
+  visualizeOpen,
   onRoll,
-  pairing,
-  texts,
+  onOpenExport,
+  exportOpen,
 }: Props) {
-  const [exportOpen, setExportOpen] = useState(false);
-
   const dashboardActive = panelOpen;
 
   return (
@@ -89,12 +91,14 @@ export default function TopBar({
         <button
           onClick={onRoll}
           tabIndex={-1}
-          className="group flex items-center gap-1.5 text-[13px] font-bold tracking-tight select-none outline-none"
+          className="group flex items-center gap-1.5 text-[15px] font-bold tracking-tight select-none outline-none"
           style={{ color: "var(--text)" }}
         >
-          <span>Press</span>
+          <span className={`${isDark ? "opacity-90" : "opacity-75"} group-hover:opacity-100 transition-opacity duration-300`}>
+            Press
+          </span>
           <span
-            className="inline-flex items-center justify-center px-2 py-0.5 rounded border text-[13px] font-bold tracking-tight shadow-sm transition-all duration-300 ease-[cubic-bezier(0.23,1,0.32,1)] group-hover:scale-110 group-hover:shadow-md group-active:scale-95"
+            className="inline-flex items-center justify-center px-2 py-0.5 rounded border text-[15px] font-bold tracking-tight shadow-sm transition-all duration-300 ease-[cubic-bezier(0.23,1,0.32,1)] group-hover:scale-110 group-hover:shadow-md group-active:scale-95"
             style={{
               background: activeColor || "var(--surface-muted)",
               color: activeColor ? getContrastText(activeColor) : "var(--text)",
@@ -103,7 +107,9 @@ export default function TopBar({
           >
             SPACEBAR
           </span>
-          <span>to generate font pairs</span>
+          <span className={`${isDark ? "opacity-90" : "opacity-75"} group-hover:opacity-100 transition-opacity duration-300`}>
+            to generate font pairs
+          </span>
         </button>
       </div>
 
@@ -114,6 +120,18 @@ export default function TopBar({
 
       {/* RIGHT — history, actions, dashboard */}
       <div className="flex items-center justify-end gap-2">
+        {/* Section 0 — Visualize fonts */}
+        <Tooltip label={visualizeOpen ? "Close visualizer" : "Visualize fonts"} direction="bottom">
+          <IconButton
+            active={visualizeOpen}
+            onClick={onVisualize}
+            aria-label="Visualize fonts"
+            icon={<GeometricShapes01Icon size={18} />}
+          />
+        </Tooltip>
+
+        <Divider />
+
         {/* Section 1 — Undo / Redo */}
         <div className="flex items-center gap-0.5">
           <Tooltip label="Step back" direction="bottom">
@@ -169,7 +187,7 @@ export default function TopBar({
 
           <Tooltip label="Export" direction="bottom">
             <ActionButton
-              onClick={() => setExportOpen(true)}
+              onClick={onOpenExport}
               variant="solid"
               justActed={false}
               active={exportOpen}
@@ -224,14 +242,6 @@ export default function TopBar({
           />
         </Tooltip>
       </div>
-
-      <ExportMenu
-        open={exportOpen}
-        onClose={() => setExportOpen(false)}
-        pairing={pairing}
-        texts={texts}
-        accentColor={activeColor ?? null}
-      />
     </div>
   );
 }

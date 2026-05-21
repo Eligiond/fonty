@@ -12,12 +12,19 @@ const ROLE_LABEL: Record<FontRole, string> = {
   caption: "Caption",
 };
 
-const ROLE_SAMPLE_SIZE: Record<FontRole, number> = {
-  heading: 36,
-  subheading: 22,
-  body: 13,
-  caption: 10,
-};
+// A single line that exercises every letter of the alphabet — the closing
+// sample on each specimen page, set in the font itself.
+const PANGRAM = "The quick brown fox jumps over the lazy dog";
+
+// Character set, broken into even lines so it reads as a calm block rather
+// than one long unbroken string. Numerals/punctuation close it out.
+const CHAR_LINES = [
+  "abcdefghijkl",
+  "mnopqrstuvwxyz",
+  "ABCDEFGHIJKLM",
+  "NOPQRSTUVWXYZ",
+];
+const NUMERAL_LINE = "1234567890!@#$%&*(){}+?";
 
 function fontSlug(family: string): string {
   return family
@@ -67,8 +74,8 @@ async function urlExists(url: string): Promise<boolean> {
 
 export async function generateSpecimenPdf(
   pairing: FontPairing,
-  texts: Texts,
-  accent?: string | null,
+  _texts: Texts,
+  _accent?: string | null,
 ): Promise<Blob> {
   const [{ Document, Page, Text, View, StyleSheet, Font, pdf }] = await Promise.all([
     import("@react-pdf/renderer"),
@@ -104,251 +111,167 @@ export async function generateSpecimenPdf(
   const resolveFamily = (family: string): string =>
     registered.has(family) ? family : "Helvetica";
 
-  const accentColor = accent ?? "#111111";
+  const dateLabel = new Date().toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
 
   const styles = StyleSheet.create({
-    page: {
-      paddingTop: 56,
-      paddingBottom: 56,
+    coverPage: {
+      flexDirection: "column",
+      paddingVertical: 52,
       paddingHorizontal: 64,
       backgroundColor: "#ffffff",
       color: "#111111",
     },
-    coverHeader: {
-      flexDirection: "row",
-      justifyContent: "space-between",
-      alignItems: "flex-start",
-      marginBottom: 48,
-    },
-    coverEyebrow: {
-      fontSize: 8,
-      letterSpacing: 2,
-      color: "#888888",
-      textTransform: "uppercase",
-    },
-    coverVibe: {
-      fontSize: 8,
-      letterSpacing: 2,
-      color: accentColor,
-      textTransform: "uppercase",
-    },
-    coverTitle: {
-      fontSize: 28,
-      lineHeight: 1.1,
-      marginBottom: 32,
+    specimenPage: {
+      flexDirection: "column",
+      paddingVertical: 48,
+      paddingHorizontal: 64,
+      backgroundColor: "#ffffff",
       color: "#111111",
     },
-    coverDivider: {
-      height: 2,
-      backgroundColor: accentColor,
-      width: 48,
-      marginBottom: 48,
-    },
-    sampleBlock: {
-      marginBottom: 28,
-    },
-    sampleMeta: {
-      flexDirection: "row",
-      alignItems: "center",
-      marginBottom: 6,
-    },
-    sampleRole: {
-      fontSize: 7,
-      letterSpacing: 1.5,
-      color: "#888888",
+    eyebrow: {
+      fontSize: 9,
+      letterSpacing: 2.6,
+      color: "#9a9a9a",
       textTransform: "uppercase",
-      marginRight: 8,
     },
-    sampleFamily: {
-      fontSize: 7,
-      letterSpacing: 1.5,
-      color: accentColor,
-      textTransform: "uppercase",
+    // — Cover —
+    coverTitle: {
+      fontSize: 76,
+      // Generous leading so deep descenders never crowd the date below it,
+      // whatever heading font the pairing happens to land on.
+      lineHeight: 1.15,
+      color: "#111111",
+      marginBottom: 34,
+    },
+    coverDate: {
+      fontSize: 17,
+      letterSpacing: 0.2,
+      color: "#555555",
+    },
+    coverSite: {
+      fontSize: 12,
+      letterSpacing: 0.5,
+      color: "#9a9a9a",
+      textAlign: "right",
+    },
+    // — Specimen —
+    specimenName: {
+      fontSize: 50,
+      lineHeight: 1.1,
+      color: "#111111",
+      marginTop: 9,
+    },
+    charSection: {
+      marginTop: 44,
+    },
+    charLine: {
+      fontSize: 21,
+      lineHeight: 1.46,
+      color: "#1a1a1a",
+    },
+    sampleSection: {
+      marginTop: 50,
     },
     sampleText: {
-      lineHeight: 1.25,
+      fontSize: 30,
+      lineHeight: 1.3,
       color: "#111111",
     },
-    footer: {
+    specimenFooter: {
       position: "absolute",
-      bottom: 32,
+      bottom: 30,
       left: 64,
       right: 64,
       flexDirection: "row",
       justifyContent: "space-between",
       fontSize: 8,
-      color: "#aaaaaa",
-      letterSpacing: 1.5,
+      letterSpacing: 1.4,
+      color: "#b0b0b0",
       textTransform: "uppercase",
     },
-    specimenHeader: {
-      borderBottomWidth: 1,
-      borderBottomColor: "#eeeeee",
-      paddingBottom: 16,
-      marginBottom: 28,
-    },
-    specimenEyebrow: {
-      fontSize: 8,
-      letterSpacing: 2,
-      color: "#888888",
-      textTransform: "uppercase",
-      marginBottom: 6,
-    },
-    specimenName: {
-      fontSize: 44,
-      lineHeight: 1,
-      color: "#111111",
-    },
-    charBlock: {
-      marginBottom: 24,
-    },
-    charLabel: {
-      fontSize: 7,
-      letterSpacing: 1.5,
-      color: "#888888",
-      textTransform: "uppercase",
-      marginBottom: 8,
-    },
-    charLine: {
-      fontSize: 22,
-      lineHeight: 1.2,
-      color: "#111111",
-    },
-    sizeRow: {
-      flexDirection: "row",
-      alignItems: "baseline",
-      marginBottom: 14,
-      borderTopWidth: 1,
-      borderTopColor: "#f3f3f3",
-      paddingTop: 12,
-    },
-    sizeLabel: {
-      width: 28,
-      fontSize: 7,
-      color: "#aaaaaa",
-      letterSpacing: 1.5,
-    },
-    sizeText: {
-      flex: 1,
-      color: "#111111",
+    footerBrand: {
+      color: "#6e6e6e",
     },
   });
 
-  const pairedSentences = ROLE_ORDER.filter((role) =>
-    pairing.slots.some((s) => s.role === role),
+  // One specimen page per role, in a stable order.
+  const slots = ROLE_ORDER.flatMap((role) =>
+    pairing.slots.filter((s) => s.role === role),
   );
 
+  const headingSlot = slots.find((s) => s.role === "heading") ?? slots[0];
+  const coverTitleFamily = headingSlot
+    ? resolveFamily(headingSlot.family)
+    : "Helvetica";
+
   const Doc = (
-    <Document title={`${pairing.vibe || "Fontfun"} specimen`} author="Fontfun">
-      <Page size="A4" style={styles.page} wrap>
-        <View style={styles.coverHeader}>
-          <Text style={styles.coverEyebrow}>FONTFUN · SPECIMEN</Text>
-          <Text style={styles.coverVibe}>{pairing.vibe || "Pairing"}</Text>
+    <Document title={`${pairing.vibe || "Fontfun"} typeset kit`} author="Fontfun">
+      {/* Cover — title + date sit in the upper-middle, site stays bottom-right */}
+      <Page size="A4" orientation="landscape" style={styles.coverPage}>
+        <Text style={styles.eyebrow}>FONTFUN · TYPESET</Text>
+        <View style={{ flexGrow: 2.2 }} />
+        <View>
+          <Text
+            style={[
+              styles.coverTitle,
+              { fontFamily: coverTitleFamily, fontWeight: 700 },
+            ]}
+          >
+            Typeset kit
+          </Text>
+          <Text style={styles.coverDate}>{dateLabel}</Text>
         </View>
-
-        <Text
-          style={[
-            styles.coverTitle,
-            {
-              fontFamily: pairing.slots[0]
-                ? resolveFamily(pairing.slots[0].family)
-                : "Helvetica",
-              fontWeight: 700,
-            },
-          ]}
-        >
-          {texts.heading}
-        </Text>
-
-        <View style={styles.coverDivider} />
-
-        {pairedSentences.map((role) => {
-          const slot = pairing.slots.find((s) => s.role === role);
-          if (!slot) return null;
-          return (
-            <View key={role} style={styles.sampleBlock} wrap={false}>
-              <View style={styles.sampleMeta}>
-                <Text style={styles.sampleRole}>{ROLE_LABEL[role].toUpperCase()}</Text>
-                <Text style={styles.sampleFamily}>· {slot.family}</Text>
-              </View>
-              <Text
-                style={[
-                  styles.sampleText,
-                  {
-                    fontFamily: resolveFamily(slot.family),
-                    fontSize: ROLE_SAMPLE_SIZE[role],
-                    fontWeight: role === "heading" ? 700 : 400,
-                  },
-                ]}
-              >
-                {texts[role]}
-              </Text>
-            </View>
-          );
-        })}
-
-        <View style={styles.footer} fixed>
-          <Text>FONTFUN.APP</Text>
-          <Text render={({ pageNumber, totalPages }) => `${pageNumber} / ${totalPages}`} />
-        </View>
+        <View style={{ flexGrow: 1 }} />
+        <Text style={styles.coverSite}>fontfun.co</Text>
       </Page>
 
-      {pairing.slots.map((slot) => {
+      {/* One landscape specimen page per font */}
+      {slots.map((slot) => {
         const ff = resolveFamily(slot.family);
         return (
-        <Page key={`${slot.role}-${slot.family}`} size="A4" style={styles.page} wrap>
-          <View style={styles.specimenHeader}>
-            <Text style={styles.specimenEyebrow}>
+          <Page
+            key={`${slot.role}-${slot.family}`}
+            size="A4"
+            orientation="landscape"
+            style={styles.specimenPage}
+          >
+            <Text style={styles.eyebrow}>
               {ROLE_LABEL[slot.role].toUpperCase()}
             </Text>
             <Text
-              style={[
-                styles.specimenName,
-                { fontFamily: ff, fontWeight: 700 },
-              ]}
+              style={[styles.specimenName, { fontFamily: ff, fontWeight: 700 }]}
             >
               {slot.family}
             </Text>
-          </View>
 
-          <View style={styles.charBlock}>
-            <Text style={styles.charLabel}>UPPERCASE</Text>
-            <Text style={[styles.charLine, { fontFamily: ff }]}>
-              ABCDEFGHIJKLMNOPQRSTUVWXYZ
-            </Text>
-          </View>
-          <View style={styles.charBlock}>
-            <Text style={styles.charLabel}>LOWERCASE</Text>
-            <Text style={[styles.charLine, { fontFamily: ff }]}>
-              abcdefghijklmnopqrstuvwxyz
-            </Text>
-          </View>
-          <View style={styles.charBlock}>
-            <Text style={styles.charLabel}>NUMERALS · PUNCTUATION</Text>
-            <Text style={[styles.charLine, { fontFamily: ff }]}>
-              0 1 2 3 4 5 6 7 8 9 . , : ; ! ? & @ #
-            </Text>
-          </View>
-
-          {[64, 36, 22, 14].map((size) => (
-            <View key={size} style={styles.sizeRow} wrap={false}>
-              <Text style={styles.sizeLabel}>{size}</Text>
-              <Text
-                style={[
-                  styles.sizeText,
-                  { fontFamily: ff, fontSize: size, lineHeight: size >= 36 ? 1.05 : 1.3 },
-                ]}
-              >
-                {size >= 36 ? "Type that travels well." : texts[slot.role]}
+            {/* Character set — even lines, uniform leading throughout */}
+            <View style={styles.charSection}>
+              {CHAR_LINES.map((line) => (
+                <Text key={line} style={[styles.charLine, { fontFamily: ff }]}>
+                  {line}
+                </Text>
+              ))}
+              <Text style={[styles.charLine, { fontFamily: ff }]}>
+                {NUMERAL_LINE}
               </Text>
             </View>
-          ))}
 
-          <View style={styles.footer} fixed>
-            <Text>{slot.family.toUpperCase()}</Text>
-            <Text render={({ pageNumber, totalPages }) => `${pageNumber} / ${totalPages}`} />
-          </View>
-        </Page>
+            {/* Sample — the pangram, set in the font itself */}
+            <View style={styles.sampleSection}>
+              <Text style={[styles.sampleText, { fontFamily: ff }]}>
+                {PANGRAM}
+              </Text>
+            </View>
+
+            <View style={styles.specimenFooter} fixed>
+              <Text>{ROLE_LABEL[slot.role]} Font</Text>
+              <Text style={styles.footerBrand}>Generated with fontfun.co</Text>
+            </View>
+          </Page>
         );
       })}
     </Document>

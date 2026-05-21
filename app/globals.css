@@ -197,6 +197,28 @@ button:active:not(:disabled),
   to   { opacity: 1; }
 }
 
+/* Typesetting loader — lines "ink in" left-to-right, simulating layout */
+@keyframes fonty-typeset-line {
+  0%   { transform: scaleX(0); opacity: 0.25; }
+  35%  { transform: scaleX(1); opacity: 1; }
+  80%  { transform: scaleX(1); opacity: 1; }
+  100% { transform: scaleX(0); opacity: 0.25; }
+}
+.fonty-typeset-line {
+  transform-origin: left center;
+  animation: fonty-typeset-line 2.4s cubic-bezier(0.23, 1, 0.32, 1) infinite;
+}
+
+/* Typesetting loader — heading glyph breathes through weight + tracking */
+@keyframes fonty-aa-breathe {
+  0%, 100% { font-weight: 400; letter-spacing: 0em;     transform: translateY(0); }
+  50%      { font-weight: 700; letter-spacing: -0.04em; transform: translateY(-1px); }
+}
+.fonty-aa-breathe {
+  animation: fonty-aa-breathe 2.6s cubic-bezier(0.23, 1, 0.32, 1) infinite;
+  will-change: font-weight, letter-spacing, transform;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

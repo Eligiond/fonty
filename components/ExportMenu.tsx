@@ -31,6 +31,8 @@ type Props = {
   pairing: FontPairing;
   texts: Texts;
   accentColor?: string | null;
+  /** When provided, opens directly at the PDF preview using the cached blob. */
+  initialPdfPreview?: { blob: Blob; filename: string } | null;
 };
 
 type ExportKey = "pdf" | "url" | "html" | "css" | "tailwind" | "json";
@@ -56,7 +58,7 @@ type PdfPreview =
   | { state: "ready"; url: string; blob: Blob; filename: string }
   | { state: "error"; message: string };
 
-export default function ExportMenu({ open, onClose, pairing, texts, accentColor }: Props) {
+export default function ExportMenu({ open, onClose, pairing, texts, accentColor, initialPdfPreview }: Props) {
   const [confirmed, setConfirmed] = useState<ExportKey | null>(null);
   const [busy, setBusy] = useState<ExportKey | null>(null);
   const [pdfPreview, setPdfPreview] = useState<PdfPreview | null>(null);
@@ -67,6 +69,18 @@ export default function ExportMenu({ open, onClose, pairing, texts, accentColor 
       if (pdfPreview?.state === "ready") URL.revokeObjectURL(pdfPreview.url);
     };
   }, [pdfPreview]);
+
+  // When opened with a cached preview, jump straight to the ready state.
+  useEffect(() => {
+    if (!open || !initialPdfPreview) return;
+    const url = URL.createObjectURL(initialPdfPreview.blob);
+    setPdfPreview({
+      state: "ready",
+      url,
+      blob: initialPdfPreview.blob,
+      filename: initialPdfPreview.filename,
+    });
+  }, [open, initialPdfPreview]);
 
   useEffect(() => {
     if (!open) {
@@ -284,17 +298,7 @@ function PdfPreviewBody({
           minHeight: 480,
         }}
       >
-        {preview.state === "loading" && (
-          <div className="flex flex-col items-center gap-3 px-6 py-8 text-center">
-            <span className="h-8 w-8 animate-spin rounded-full border-2 border-current border-t-transparent opacity-60" />
-            <p className="text-[13px] font-medium" style={{ color: "var(--text)" }}>
-              Building your specimen…
-            </p>
-            <p className="text-[11px]" style={{ color: "var(--text-muted)" }}>
-              Embedding fonts and laying out pages
-            </p>
-          </div>
-        )}
+        {preview.state === "loading" && <TypesettingLoader />}
 
         {preview.state === "ready" && (
           <iframe
@@ -334,6 +338,43 @@ function PdfPreviewBody({
           <Download01Icon size={16} />
           Download PDF
         </button>
+      </div>
+    </div>
+  );
+}
+
+function TypesettingLoader() {
+  return (
+    <div className="flex flex-col items-center gap-7 px-6 py-10 text-center">
+      <div className="flex flex-col items-center gap-5">
+        <span
+          aria-hidden
+          className="fonty-aa-breathe font-heading text-[44px] leading-none select-none"
+          style={{ color: "var(--text)" }}
+        >
+          Aa
+        </span>
+        <div className="flex flex-col items-start gap-[6px]" style={{ width: 132 }}>
+          {[100, 76, 92, 60].map((w, i) => (
+            <div
+              key={i}
+              className="fonty-typeset-line h-[5px] rounded-sm"
+              style={{
+                width: `${w}%`,
+                background: "var(--surface-muted)",
+                animationDelay: `${i * 220}ms`,
+              }}
+            />
+          ))}
+        </div>
+      </div>
+      <div className="flex flex-col items-center gap-1.5">
+        <p className="text-[13px] font-bold tracking-tight" style={{ color: "var(--text)" }}>
+          Typesetting your specimen
+        </p>
+        <p className="text-[11px]" style={{ color: "var(--text-muted)" }}>
+          Embedding fonts · Laying out pages
+        </p>
       </div>
     </div>
   );

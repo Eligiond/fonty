@@ -22,6 +22,9 @@ import SidePanel, {
   type Adjustments,
 } from "@/components/SidePanel";
 import SettingsPanel from "@/components/Settings";
+import VisualizePanel, { type VisualizePreview } from "@/components/VisualizePanel";
+import { generateSpecimenPdf } from "@/lib/pdf";
+import ExportMenu from "@/components/ExportMenu";
 import { Tick02Icon } from "@hugeicons/react";
 
 // Hooks
@@ -141,6 +144,11 @@ export default function Page() {
   const [adjustments, setAdjustments] = useState<Adjustments>(DEFAULT_ADJUSTMENTS);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [saveModalOpen, setSaveModalOpen] = useState(false);
+  const [visualizeOpen, setVisualizeOpen] = useState(false);
+  const [exportOpen, setExportOpen] = useState(false);
+  const [exportInitialPreview, setExportInitialPreview] = useState<{ blob: Blob; filename: string } | null>(null);
+  const [pdfPreview, setPdfPreview] = useState<VisualizePreview>({ state: "idle" });
+  const pdfCacheRef = useRef<{ key: string; blob: Blob; url: string } | null>(null);
   const loadedFontsRef = useRef<Set<string>>(new Set());
   const [prefetchedInDom, setPrefetchedInDom] = useState<Set<string>>(new Set());
 
@@ -289,6 +297,64 @@ export default function Page() {
     if (activeColor) setPersistentColor(activeColor);
   }, [activeColor]);
 
+  // Build the specimen PDF when the visualize panel opens, reusing the cached
+  // blob whenever the pairing/texts/accent haven't changed. The same blob URL
+  // is also handed to the Export modal when the user "elevates" the preview.
+  const pdfCacheKey = useMemo(
+    () => JSON.stringify({ pairing, texts, accent: persistentColor ?? null }),
+    [pairing, texts, persistentColor],
+  );
+  useEffect(() => {
+    if (!visualizeOpen) return;
+    const cached = pdfCacheRef.current;
+    if (cached && cached.key === pdfCacheKey) {
+      setPdfPreview({ state: "ready", url: cached.url });
+      return;
+    }
+    let cancelled = false;
+    setPdfPreview({ state: "loading" });
+    generateSpecimenPdf(pairing, texts, persistentColor ?? null)
+      .then((blob) => {
+        if (cancelled) return;
+        if (cached?.url) URL.revokeObjectURL(cached.url);
+        const url = URL.createObjectURL(blob);
+        pdfCacheRef.current = { key: pdfCacheKey, blob, url };
+        setPdfPreview({ state: "ready", url });
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setPdfPreview({
+          state: "error",
+          message: err instanceof Error ? err.message : "PDF generation failed",
+        });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [visualizeOpen, pdfCacheKey, pairing, texts, persistentColor]);
+
+  const safePdfName = useMemo(() => {
+    const slug = (pairing.vibe || "fontfun")
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "") || "fontfun";
+    return `${slug}-specimen.pdf`;
+  }, [pairing.vibe]);
+
+  const elevateToExport = useCallback(() => {
+    const cached = pdfCacheRef.current;
+    if (cached) {
+      setExportInitialPreview({ blob: cached.blob, filename: safePdfName });
+    }
+    setVisualizeOpen(false);
+    setExportOpen(true);
+  }, [safePdfName]);
+
+  const openExport = useCallback(() => {
+    setExportInitialPreview(null);
+    setExportOpen(true);
+  }, []);
+
   // Dynamic Font Loading
   useEffect(() => {
     const familiesNeeded = new Set<string>();
@@ -376,8 +442,10 @@ export default function Page() {
           canRedo={canRedo}
           onOpenDashboard={onOpenDashboard}
           panelOpen={panelOpen}
-          pairing={pairing}
-          texts={texts}
+          onVisualize={() => setVisualizeOpen((v) => !v)}
+          visualizeOpen={visualizeOpen}
+          onOpenExport={openExport}
+          exportOpen={exportOpen}
         />
       </div>
 
@@ -435,7 +503,25 @@ export default function Page() {
         roles={pairing.slots.map((s) => s.role)}
         onOpenSettings={() => setSettingsOpen(true)}
       />
+        <VisualizePanel
+          open={visualizeOpen}
+          preview={pdfPreview}
+          onClose={() => setVisualizeOpen(false)}
+          onElevate={elevateToExport}
+        />
       </div>
+
+      <ExportMenu
+        open={exportOpen}
+        onClose={() => {
+          setExportOpen(false);
+          setExportInitialPreview(null);
+        }}
+        pairing={pairing}
+        texts={texts}
+        accentColor={persistentColor}
+        initialPdfPreview={exportInitialPreview}
+      />
 
       {settingsOpen && (
         <SettingsPanel
