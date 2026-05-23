@@ -8,12 +8,13 @@ import {
   Tick02Icon,
   Cancel01Icon,
   PlusSignIcon,
-  DragDropVerticalIcon,
-  DragDropHorizontalIcon,
+  ArrowVerticalIcon,
+  ArrowHorizontalIcon,
 } from "@hugeicons/react";
 import { cssFamily, type FontPairing, type FontRole, type FontSlot, MIN_SLOTS, MAX_SLOTS } from "@/lib/fonts";
 import EditableText from "@/components/EditableText";
 import IconButton from "@/components/IconButton";
+import DragHandleButton from "@/components/DragHandleButton";
 import { Tooltip } from "@/components/Tooltip";
 import FontPicker from "@/components/FontPicker";
 import type { Adjustments } from "@/components/SidePanel";
@@ -64,6 +65,7 @@ type Props = {
   onAddSlot: () => void;
   onRemoveSlot: (role: FontRole) => void;
   onReorderSlots: (fromIdx: number, toIdx: number) => void;
+  onCommitReorder?: () => void;
   setPanelOpen?: (open: boolean) => void;
   onFontChange?: (role: FontRole, family: string) => void;
 };
@@ -79,11 +81,13 @@ export default function GenerateView({
   onAddSlot,
   onRemoveSlot,
   onReorderSlots,
+  onCommitReorder,
   setPanelOpen,
   onFontChange,
 }: Props) {
   const slots = pairing.slots;
   const [pickerTarget, setPickerTarget] = useState<PickerTarget | null>(null);
+  const [draggingRole, setDraggingRole] = useState<FontRole | null>(null);
   const canAdd = slots.length < MAX_SLOTS;
   const canRemove = slots.length > MIN_SLOTS;
   const isHorizontal = viewMode === "horizontal";
@@ -114,33 +118,48 @@ export default function GenerateView({
     e.preventDefault();
     e.stopPropagation();
     dragState.current = { fromIdx, currentIdx: fromIdx };
+    setDraggingRole(slots[fromIdx]?.role ?? null);
 
-    document.body.style.cursor = axis === "y" ? "grabbing" : "grabbing";
+    document.body.style.cursor = "grabbing";
     document.body.style.userSelect = "none";
 
-    const onMove = (ev: MouseEvent) => {
+    let rafId: number | null = null;
+    let pendingClient: { x: number; y: number } | null = null;
+
+    const apply = () => {
+      rafId = null;
+      if (!pendingClient || !dragState.current) return;
+      const { x, y } = pendingClient;
       const elements = document.querySelectorAll<HTMLElement>("[data-slot-idx]");
-      let target = dragState.current!.currentIdx;
+      let target = dragState.current.currentIdx;
       for (let i = 0; i < elements.length; i++) {
         const el = elements[i];
         const rect = el.getBoundingClientRect();
         const inside =
           axis === "y"
-            ? ev.clientY >= rect.top && ev.clientY <= rect.bottom
-            : ev.clientX >= rect.left && ev.clientX <= rect.right;
+            ? y >= rect.top && y <= rect.bottom
+            : x >= rect.left && x <= rect.right;
         if (inside) {
           target = Number(el.dataset.slotIdx);
           break;
         }
       }
-      if (target !== dragState.current!.currentIdx) {
-        onReorderSlots(dragState.current!.currentIdx, target);
-        dragState.current = { ...dragState.current!, currentIdx: target };
+      if (target !== dragState.current.currentIdx) {
+        onReorderSlots(dragState.current.currentIdx, target);
+        dragState.current = { ...dragState.current, currentIdx: target };
       }
     };
 
+    const onMove = (ev: MouseEvent) => {
+      pendingClient = { x: ev.clientX, y: ev.clientY };
+      if (rafId === null) rafId = requestAnimationFrame(apply);
+    };
+
     const onUp = () => {
+      if (rafId !== null) cancelAnimationFrame(rafId);
       dragState.current = null;
+      setDraggingRole(null);
+      onCommitReorder?.();
       document.body.style.cursor = "";
       document.body.style.userSelect = "";
       window.removeEventListener("mousemove", onMove);
@@ -185,6 +204,7 @@ export default function GenerateView({
               canRemove={canRemove}
               canAdd={canAdd}
               isLast={idx === slots.length - 1}
+              isDragging={draggingRole === slot.role}
               onTextChange={(v) => onTextChange(slot.role, v)}
               onToggleLock={() => onToggleLock(slot.role)}
               onRemove={() => onRemoveSlot(slot.role)}
@@ -216,6 +236,7 @@ export default function GenerateView({
             canRemove={canRemove}
             canAdd={canAdd}
             isLast={idx === slots.length - 1}
+            isDragging={draggingRole === slot.role}
             onTextChange={(v) => onTextChange(slot.role, v)}
             onToggleLock={() => onToggleLock(slot.role)}
             onRemove={() => onRemoveSlot(slot.role)}
@@ -258,6 +279,7 @@ function Stripe({
   canRemove,
   canAdd,
   isLast,
+  isDragging,
   onTextChange,
   onToggleLock,
   onRemove,
@@ -273,6 +295,7 @@ function Stripe({
   canRemove: boolean;
   canAdd: boolean;
   isLast: boolean;
+  isDragging: boolean;
   onTextChange: (v: string) => void;
   onToggleLock: () => void;
   onRemove: () => void;
@@ -284,7 +307,8 @@ function Stripe({
   return (
     <section
       data-slot-idx={idx}
-      className="group relative flex items-center gap-4 px-6 md:px-10 transition-colors duration-500"
+      data-slot-role={slot.role}
+      className={`group relative flex items-center gap-4 px-6 md:px-10 transition-[transform,box-shadow,background-color] duration-300 ease-[cubic-bezier(0.23,1,0.32,1)] ${isDragging ? "z-20 scale-[1.01] shadow-[0_18px_40px_-12px_rgba(0,0,0,0.25)]" : ""}`}
       style={{
         background: locked
           ? `color-mix(in oklch, var(--accent) 4%, ${stripeForIndex(idx)})`
@@ -302,24 +326,35 @@ function Stripe({
         />
       </div>
 
-      <SlotActionStack
-        orientation="vertical"
-        canRemove={canRemove}
-        onRemove={onRemove}
-        onStartReorder={onStartReorder}
-      />
-
       <aside
-        className="relative z-20 flex flex-shrink-0 items-center gap-3 text-right"
+        className="relative z-20 flex flex-shrink-0 items-center gap-1"
         style={{
           background: locked
             ? `color-mix(in oklch, var(--accent) 4%, ${stripeForIndex(idx)})`
             : stripeForIndex(idx),
         }}
       >
-        <div className="w-[170px]">
+        <div className="flex items-center gap-1 opacity-0 transition-opacity duration-200 ease-out group-hover:opacity-100 focus-within:opacity-100">
+          {canRemove && (
+            <Tooltip label="Remove font" direction="top">
+              <IconButton onClick={onRemove} ariaLabel="Remove font" title="Remove font">
+                <Cancel01Icon size={18} />
+              </IconButton>
+            </Tooltip>
+          )}
+          <Tooltip label="Drag to reorder" direction="top">
+            <DragHandleButton
+              onStartReorder={onStartReorder}
+              icon={<ArrowVerticalIcon size={18} />}
+              label="Drag to reorder"
+            />
+          </Tooltip>
+          <CopyButton family={slot.family} role={slot.role} />
+          <LockButton locked={locked} onToggle={onToggleLock} />
+        </div>
+        <div className="w-[170px] text-right">
           <div
-            className="text-[13px] uppercase tracking-[0.16em] opacity-80 whitespace-nowrap"
+            className="text-[13px] uppercase tracking-[0.16em] whitespace-nowrap"
             style={{ color: "var(--text)" }}
           >
             {meta.tag} · {meta.label}
@@ -332,10 +367,6 @@ function Stripe({
           >
             {slot.family}
           </button>
-        </div>
-        <div className="flex flex-shrink-0 items-center gap-1.5">
-          <CopyButton family={slot.family} role={slot.role} />
-          <LockButton locked={locked} onToggle={onToggleLock} />
         </div>
       </aside>
 
@@ -359,6 +390,7 @@ function Column({
   canRemove,
   canAdd,
   isLast,
+  isDragging,
   onTextChange,
   onToggleLock,
   onRemove,
@@ -374,6 +406,7 @@ function Column({
   canRemove: boolean;
   canAdd: boolean;
   isLast: boolean;
+  isDragging: boolean;
   onTextChange: (v: string) => void;
   onToggleLock: () => void;
   onRemove: () => void;
@@ -385,7 +418,8 @@ function Column({
   return (
     <section
       data-slot-idx={idx}
-      className="group relative flex h-full flex-col justify-between border-r px-4 pb-12 pt-32 last:border-r-0 md:px-8 md:pb-16 md:pt-32 transition-colors duration-500"
+      data-slot-role={slot.role}
+      className={`group relative flex h-full flex-col justify-between border-r px-4 pb-12 pt-32 last:border-r-0 md:px-8 md:pb-16 md:pt-32 transition-[transform,box-shadow,background-color] duration-300 ease-[cubic-bezier(0.23,1,0.32,1)] ${isDragging ? "z-20 scale-[1.01] shadow-[0_18px_40px_-12px_rgba(0,0,0,0.25)]" : ""}`}
       style={{
         background: locked
           ? `color-mix(in oklch, var(--accent) 4%, ${stripeForIndex(idx)})`
@@ -394,17 +428,21 @@ function Column({
         borderColor: "var(--border)",
       }}
     >
-      <header className="flex items-start justify-between gap-3">
+      <header className="flex items-center justify-between gap-2">
         <div
-          className="text-[13px] uppercase tracking-[0.16em] opacity-80"
+          className="text-[13px] uppercase tracking-[0.16em] flex-shrink-0"
           style={{ color: "var(--text)" }}
         >
           {meta.tag} · {meta.label}
         </div>
-        <div className="flex flex-shrink-0 items-center gap-1.5">
-          <CopyButton family={slot.family} role={slot.role} />
-          <LockButton locked={locked} onToggle={onToggleLock} />
-        </div>
+        <button
+          onClick={(e) => onOpenPicker?.(slot.role, e.currentTarget.getBoundingClientRect())}
+          className="font-pick-btn truncate text-[13px] font-medium text-right min-w-0 px-2 py-0.5 rounded-full"
+          style={{ fontFamily: cssFamily(slot.family), color: "var(--text)" }}
+          title="Choose font"
+        >
+          {slot.family}
+        </button>
       </header>
 
       <div className="relative flex flex-1 items-center py-6">
@@ -418,75 +456,31 @@ function Column({
         />
       </div>
 
-      <footer>
-        <button
-          onClick={(e) => onOpenPicker?.(slot.role, e.currentTarget.getBoundingClientRect())}
-          className="font-pick-btn truncate text-[13px] font-medium max-w-full text-left -mx-3 px-3 py-1.5 rounded-full"
-          style={{ fontFamily: cssFamily(slot.family), color: "var(--text)" }}
-          title="Choose font"
-        >
-          {slot.family}
-        </button>
-      </footer>
-
-      {/* Action stack — below header, above text center */}
+      {/* Action stack — lock, copy, drag, remove (top to bottom), centered horizontally */}
       <div className="pointer-events-none absolute left-0 right-0 top-44 flex justify-center">
-        <SlotActionStack
-          orientation="vertical"
-          canRemove={canRemove}
-          onRemove={onRemove}
-          onStartReorder={onStartReorder}
-        />
+        <div className="pointer-events-auto flex flex-col items-center gap-1 opacity-0 transition-opacity duration-200 ease-out group-hover:opacity-100 focus-within:opacity-100">
+          <LockButton locked={locked} onToggle={onToggleLock} tooltipDirection="left" />
+          <CopyButton family={slot.family} role={slot.role} tooltipDirection="left" />
+          <Tooltip label="Drag to reorder" direction="left">
+            <DragHandleButton
+              onStartReorder={onStartReorder}
+              icon={<ArrowHorizontalIcon size={18} />}
+              label="Drag to reorder"
+            />
+          </Tooltip>
+          {canRemove && (
+            <Tooltip label="Remove font" direction="left">
+              <IconButton onClick={onRemove} ariaLabel="Remove font" title="Remove font">
+                <Cancel01Icon size={18} />
+              </IconButton>
+            </Tooltip>
+          )}
+        </div>
       </div>
       {canAdd && !isLast && (
         <BoundaryAdd orientation="vertical" onAdd={onAddAfter} />
       )}
     </section>
-  );
-}
-
-/* ────────────────────────────────────────────────────────────
-   Per-slot hover-revealed action stack (X + drag).
-   Both views use a vertical stack — matches the coolors layout.
-   ──────────────────────────────────────────────────────────── */
-
-function SlotActionStack({
-  canRemove,
-  onRemove,
-  onStartReorder,
-  orientation,
-}: {
-  canRemove: boolean;
-  onRemove: () => void;
-  onStartReorder: (e: React.MouseEvent) => void;
-  orientation: "vertical" | "horizontal";
-}) {
-  const isVertical = orientation === "vertical";
-  return (
-    <div
-      className={`pointer-events-auto flex ${isVertical ? "flex-col" : "flex-row"} items-center gap-1.5 opacity-0 transition-opacity duration-200 ease-out group-hover:opacity-100 focus-within:opacity-100`}
-    >
-      {canRemove && (
-        <Tooltip label="Remove font" direction={isVertical ? "left" : "top"}>
-          <IconButton onClick={onRemove} ariaLabel="Remove font" title="Remove font">
-            <Cancel01Icon size={18} />
-          </IconButton>
-        </Tooltip>
-      )}
-      <Tooltip label="Drag to reorder" direction={isVertical ? "left" : "top"}>
-        <button
-          type="button"
-          onMouseDown={onStartReorder}
-          aria-label="Drag to reorder"
-          title="Drag to reorder"
-          className="group/drag relative inline-flex h-8 w-8 flex-shrink-0 cursor-grab items-center justify-center rounded-full transition-all duration-200 ease-[cubic-bezier(0.23,1,0.32,1)] active:cursor-grabbing active:scale-[0.92] bg-transparent text-[var(--text-muted)] hover:bg-[var(--surface-muted)] hover:text-[var(--text)]"
-        >
-          <span className="relative z-10 transition-transform duration-200 group-hover/drag:scale-110">
-            {isVertical ? <DragDropVerticalIcon size={18} /> : <DragDropHorizontalIcon size={18} />}
-          </span>
-        </button>
-      </Tooltip>
-    </div>
   );
 }
 
@@ -521,7 +515,7 @@ function BoundaryAdd({
 }) {
   if (orientation === "horizontal") {
     return (
-      <div className="pointer-events-none absolute -bottom-2 left-6 right-[294px] md:left-10 md:right-[310px] z-30 flex h-4 items-center justify-center">
+      <div className="pointer-events-none absolute -bottom-2 left-6 right-[360px] md:left-10 md:right-[380px] z-30 flex h-4 items-center justify-center">
         <div className="pointer-events-auto opacity-0 transition-opacity duration-200 group-hover:opacity-100">
           <AddButton onAdd={onAdd} />
         </div>
@@ -541,28 +535,35 @@ function BoundaryAdd({
 function LockButton({
   locked,
   onToggle,
+  tooltipDirection = "top",
 }: {
   locked: boolean;
   onToggle: () => void;
+  tooltipDirection?: "top" | "bottom" | "left" | "right";
 }) {
+  const label = locked ? "Unlock font" : "Lock font";
   return (
-    <IconButton
-      onClick={onToggle}
-      active={locked}
-      ariaLabel={locked ? "Unlock font" : "Lock font"}
-      title={locked ? "Unlock font" : "Lock font"}
-    >
-      {locked ? <SquareLock02Icon size={18} /> : <SquareUnlock02Icon size={18} />}
-    </IconButton>
+    <Tooltip label={label} direction={tooltipDirection}>
+      <IconButton
+        onClick={onToggle}
+        active={locked}
+        ariaLabel={label}
+        title={label}
+      >
+        {locked ? <SquareLock02Icon size={18} /> : <SquareUnlock02Icon size={18} />}
+      </IconButton>
+    </Tooltip>
   );
 }
 
 function CopyButton({
   family,
   role,
+  tooltipDirection = "top",
 }: {
   family: string;
   role: FontRole;
+  tooltipDirection?: "top" | "bottom" | "left" | "right";
 }) {
   const [copied, setCopied] = useState(false);
 
@@ -576,13 +577,16 @@ function CopyButton({
   };
 
   return (
-    <IconButton
-      onClick={handleCopy}
-      active={copied}
-      ariaLabel="Copy font config"
-      title="Copy font config"
-    >
-      {copied ? <Tick02Icon size={18} /> : <Copy01Icon size={18} />}
-    </IconButton>
+    <Tooltip label={copied ? "Copied!" : "Copy font config"} direction={tooltipDirection}>
+      <IconButton
+        onClick={handleCopy}
+        active={copied}
+        ariaLabel="Copy font config"
+        title="Copy font config"
+        iconHover="rotate"
+      >
+        {copied ? <Tick02Icon size={18} /> : <Copy01Icon size={18} />}
+      </IconButton>
+    </Tooltip>
   );
 }

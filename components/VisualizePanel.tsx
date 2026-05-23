@@ -3,7 +3,7 @@
 import { Cancel01Icon, ArrowUpRight01Icon } from "@hugeicons/react";
 import { Tooltip } from "./Tooltip";
 
-export const VISUALIZE_PANEL_WIDTH = 720;
+export const VISUALIZE_PANEL_WIDTH = 540;
 
 export type VisualizePreview =
   | { state: "idle" }
@@ -22,7 +22,7 @@ export default function VisualizePanel({ open, preview, onClose, onElevate }: Pr
   return (
     <aside
       aria-hidden={!open}
-      className="hidden flex-shrink-0 lg:flex flex-col overflow-hidden border-l transition-[width] duration-300 ease-[cubic-bezier(0.23,1,0.32,1)]"
+      className="hidden flex-shrink-0 lg:flex flex-col overflow-hidden border-l transition-[width] duration-[350ms] ease-[cubic-bezier(0.23,1,0.32,1)]"
       style={{
         width: open ? VISUALIZE_PANEL_WIDTH : 0,
         color: "var(--text)",
@@ -34,9 +34,11 @@ export default function VisualizePanel({ open, preview, onClose, onElevate }: Pr
         className="relative flex h-full flex-col"
         style={{ width: VISUALIZE_PANEL_WIDTH, minWidth: VISUALIZE_PANEL_WIDTH }}
       >
-        {/* Header */}
+        {/* Header — buttons sit as real flex items on each edge so the
+            Tooltip wrappers have actual bounds; the title is absolutely
+            centered on top so it stays perfectly mid-row regardless. */}
         <div
-          className="relative flex h-12 items-center justify-center border-b px-3"
+          className="relative flex h-12 items-center justify-between border-b px-3"
           style={{ borderColor: "var(--border)" }}
         >
           <Tooltip label="Open in Export" direction="bottom">
@@ -44,7 +46,7 @@ export default function VisualizePanel({ open, preview, onClose, onElevate }: Pr
               onClick={onElevate}
               aria-label="Open in Export"
               disabled={preview.state !== "ready"}
-              className="group absolute left-3 flex h-8 w-8 items-center justify-center rounded-lg transition-colors duration-150 hover:bg-[color:var(--bg)] disabled:opacity-40 disabled:cursor-not-allowed"
+              className="group flex h-8 w-8 items-center justify-center rounded-lg transition-colors duration-150 hover:bg-[color:var(--bg)] disabled:opacity-40 disabled:cursor-not-allowed"
               style={{ color: "var(--text)" }}
             >
               <ArrowUpRight01Icon
@@ -55,7 +57,7 @@ export default function VisualizePanel({ open, preview, onClose, onElevate }: Pr
           </Tooltip>
 
           <span
-            className="text-[13px] font-bold tracking-tight"
+            className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-[13px] font-bold tracking-tight"
             style={{ color: "var(--text)" }}
           >
             Visualize fonts
@@ -65,7 +67,7 @@ export default function VisualizePanel({ open, preview, onClose, onElevate }: Pr
             <button
               onClick={onClose}
               aria-label="Close"
-              className="absolute right-3 flex h-8 w-8 items-center justify-center rounded-lg transition-colors duration-150 hover:bg-[color:var(--bg)]"
+              className="flex h-8 w-8 items-center justify-center rounded-lg transition-colors duration-150 hover:bg-[color:var(--bg)]"
               style={{ color: "var(--text)" }}
             >
               <Cancel01Icon size={18} />

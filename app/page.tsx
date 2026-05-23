@@ -128,6 +128,12 @@ export default function Page() {
     }
   }, [viewMode, websiteAutoOpened, setPanelOpen, setWebsiteAutoOpened]);
 
+  // Dashboard and visualizer are mutually exclusive: opening the dashboard
+  // dismisses the visualizer, mirroring the visualize-button handler.
+  useEffect(() => {
+    if (panelOpen) setVisualizeOpen(false);
+  }, [panelOpen]);
+
   const {
     saved,
     activeSavedId, setActiveSavedId,
@@ -212,24 +218,53 @@ export default function Page() {
     [pairing, commitPairing],
   );
 
+  // Snapshot of slots when a drag-reorder begins. Used to commit a single
+  // history entry on mouseup rather than one per intermediate swap.
+  const reorderSnapshotRef = useRef<FontPairing["slots"] | null>(null);
+  const pairingRef = useRef(pairing);
+  useEffect(() => {
+    pairingRef.current = pairing;
+  }, [pairing]);
+
   const reorderSlots = useCallback(
     (fromIdx: number, toIdx: number) => {
-      if (
-        fromIdx === toIdx ||
-        fromIdx < 0 ||
-        toIdx < 0 ||
-        fromIdx >= pairing.slots.length ||
-        toIdx >= pairing.slots.length
-      ) {
-        return;
-      }
-      const next = pairing.slots.slice();
-      const [moved] = next.splice(fromIdx, 1);
-      next.splice(toIdx, 0, moved);
-      commitPairing({ ...pairing, slots: next });
+      setPairing((prev) => {
+        if (
+          fromIdx === toIdx ||
+          fromIdx < 0 ||
+          toIdx < 0 ||
+          fromIdx >= prev.slots.length ||
+          toIdx >= prev.slots.length
+        ) {
+          return prev;
+        }
+        if (reorderSnapshotRef.current === null) {
+          reorderSnapshotRef.current = prev.slots;
+        }
+        const next = prev.slots.slice();
+        const [moved] = next.splice(fromIdx, 1);
+        next.splice(toIdx, 0, moved);
+        return { ...prev, slots: next };
+      });
     },
-    [pairing, commitPairing],
+    [],
   );
+
+  const commitReorder = useCallback(() => {
+    const initial = reorderSnapshotRef.current;
+    reorderSnapshotRef.current = null;
+    if (!initial) return;
+    const curr = pairingRef.current;
+    const same =
+      curr.slots.length === initial.length &&
+      curr.slots.every((s, i) => s.role === initial[i].role);
+    if (same) return;
+    setHistory((prev) => {
+      const trimmed = prev.slice(0, historyCursor + 1);
+      return [...trimmed, curr];
+    });
+    setHistoryCursor((c) => c + 1);
+  }, [historyCursor]);
 
   const toggleLock = (role: FontRole) =>
     setLocks((l) => ({ ...l, [role]: !l[role] }));
@@ -442,7 +477,13 @@ export default function Page() {
           canRedo={canRedo}
           onOpenDashboard={onOpenDashboard}
           panelOpen={panelOpen}
-          onVisualize={() => setVisualizeOpen((v) => !v)}
+          onVisualize={() => {
+            setVisualizeOpen((v) => {
+              const next = !v;
+              if (next) setPanelOpen(false);
+              return next;
+            });
+          }}
           visualizeOpen={visualizeOpen}
           onOpenExport={openExport}
           exportOpen={exportOpen}
@@ -480,6 +521,7 @@ export default function Page() {
               onAddSlot={addSlot}
               onRemoveSlot={removeSlot}
               onReorderSlots={reorderSlots}
+              onCommitReorder={commitReorder}
               setPanelOpen={setPanelOpen}
               onFontChange={setSlotFont}
             />

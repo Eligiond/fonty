@@ -3,6 +3,7 @@
 import { cssFamily, type FontPairing, type FontRole, type FontSlot, MIN_SLOTS, MAX_SLOTS } from "@/lib/fonts";
 import EditableText from "@/components/EditableText";
 import IconButton from "@/components/IconButton";
+import DragHandleButton from "@/components/DragHandleButton";
 import { Tooltip } from "@/components/Tooltip";
 import FontPicker from "@/components/FontPicker";
 import type { Adjustments } from "@/components/SidePanel";
@@ -13,7 +14,7 @@ import {
   Tick02Icon,
   Cancel01Icon,
   PlusSignIcon,
-  DragDropVerticalIcon,
+  ArrowVerticalIcon,
 } from "@hugeicons/react";
 import { useRef, useState } from "react";
 
@@ -167,8 +168,6 @@ export default function MockupView({
   );
 }
 
-const HANDLE_GAP = 16;
-const HANDLE_BUTTON = 36;
 const HANDLE_INFO_MIN_GAP = 24;
 
 function FontBlock({
@@ -229,7 +228,7 @@ function FontBlock({
     const onMove = (ev: MouseEvent) => {
       const parentW = containerRef.current?.clientWidth ?? 0;
       const infoW = infoRef.current?.offsetWidth ?? 0;
-      const chromeW = infoW + HANDLE_GAP + HANDLE_BUTTON + HANDLE_INFO_MIN_GAP;
+      const chromeW = infoW + HANDLE_INFO_MIN_GAP;
       onDragW(ev.movementX, parentW, chromeW);
     };
     const onUp = () => {
@@ -240,7 +239,7 @@ function FontBlock({
     window.addEventListener("mouseup", onUp);
   };
 
-  const CHROME_RESERVE_PX = 350;
+  const CHROME_RESERVE_PX = 360;
 
   return (
     <div
@@ -293,40 +292,32 @@ function FontBlock({
         )}
       </div>
 
-      {/* Remove button — between specimen and drag handle */}
-      {canRemove && (
-        <div
-          className="flex-shrink-0 opacity-0 transition-opacity duration-200 group-hover:opacity-100"
-          style={{ paddingLeft: `${HANDLE_GAP}px` }}
-        >
-          <Tooltip label="Remove font" direction="top">
-            <IconButton onClick={onRemove} ariaLabel="Remove font" title="Remove font">
-              <Cancel01Icon size={18} />
-            </IconButton>
-          </Tooltip>
-        </div>
-      )}
-
-      {/* Y-drag handle */}
-      <div className="flex-shrink-0" style={{ paddingLeft: `8px` }}>
-        <button
-          onMouseDown={handleMouseDownY}
-          className="p-2 rounded-lg opacity-0 group-hover:opacity-20 hover:!opacity-100 hover:bg-[var(--surface-muted)] transition-all cursor-pointer active:cursor-grabbing active:scale-95"
-          style={{ color: "var(--text)" }}
-          title="Drag to reposition"
-        >
-          <DragDropVerticalIcon size={18} />
-        </button>
-      </div>
-
-      {/* Flexible spacer pushes info to the right */}
+      {/* Flexible spacer pushes the action cluster + info to the right */}
       <div className="flex-1" style={{ minWidth: `${HANDLE_INFO_MIN_GAP}px` }} />
 
-      {/* Font Information */}
-      <aside ref={infoRef} className="relative z-20 flex flex-shrink-0 items-center gap-3 text-right" style={{ background: "var(--bg)" }}>
-        <div className="w-[170px]">
+      {/* Right cluster — action buttons + font info, mirrors horizontal view */}
+      <aside ref={infoRef} className="relative z-20 flex flex-shrink-0 items-center gap-1" style={{ background: "var(--bg)" }}>
+        <div className="flex items-center gap-1 opacity-0 transition-opacity duration-200 ease-out group-hover:opacity-100 focus-within:opacity-100">
+          {canRemove && (
+            <Tooltip label="Remove font" direction="top">
+              <IconButton onClick={onRemove} ariaLabel="Remove font" title="Remove font">
+                <Cancel01Icon size={18} />
+              </IconButton>
+            </Tooltip>
+          )}
+          <Tooltip label="Drag to reposition" direction="top">
+            <DragHandleButton
+              onStartReorder={handleMouseDownY}
+              icon={<ArrowVerticalIcon size={18} />}
+              label="Drag to reposition"
+            />
+          </Tooltip>
+          <CopyButton family={slot.family} role={slot.role} />
+          <LockButton locked={locked} onToggle={onToggleLock} />
+        </div>
+        <div className="w-[170px] text-right">
           <div
-            className="text-[13px] uppercase tracking-[0.16em] opacity-80 whitespace-nowrap"
+            className="text-[13px] uppercase tracking-[0.16em] whitespace-nowrap"
             style={{ color: "var(--text)" }}
           >
             {label}
@@ -340,10 +331,6 @@ function FontBlock({
             {slot.family}
           </button>
         </div>
-        <div className="flex flex-shrink-0 items-center gap-1.5">
-          <CopyButton family={slot.family} role={slot.role} label={label} locked={locked} />
-          <LockButton locked={locked} onToggle={onToggleLock} />
-        </div>
       </aside>
     </div>
   );
@@ -356,28 +343,27 @@ function LockButton({
   locked: boolean;
   onToggle: () => void;
 }) {
+  const label = locked ? "Unlock font" : "Lock font";
   return (
-    <IconButton
-      onClick={onToggle}
-      active={locked}
-      ariaLabel={locked ? "Unlock font" : "Lock font"}
-      title={locked ? "Unlock font" : "Lock font"}
-    >
-      {locked ? <SquareLock02Icon size={18} /> : <SquareUnlock02Icon size={18} />}
-    </IconButton>
+    <Tooltip label={label} direction="top">
+      <IconButton
+        onClick={onToggle}
+        active={locked}
+        ariaLabel={label}
+        title={label}
+      >
+        {locked ? <SquareLock02Icon size={18} /> : <SquareUnlock02Icon size={18} />}
+      </IconButton>
+    </Tooltip>
   );
 }
 
 function CopyButton({
   family,
   role,
-  label,
-  locked,
 }: {
   family: string;
   role: FontRole;
-  label: string;
-  locked: boolean;
 }) {
   const [copied, setCopied] = useState(false);
 
@@ -391,13 +377,16 @@ function CopyButton({
   };
 
   return (
-    <IconButton
-      onClick={handleCopy}
-      active={copied}
-      ariaLabel="Copy font config"
-      title="Copy font config"
-    >
-      {copied ? <Tick02Icon size={18} /> : <Copy01Icon size={18} />}
-    </IconButton>
+    <Tooltip label={copied ? "Copied!" : "Copy font config"} direction="top">
+      <IconButton
+        onClick={handleCopy}
+        active={copied}
+        ariaLabel="Copy font config"
+        title="Copy font config"
+        iconHover="rotate"
+      >
+        {copied ? <Tick02Icon size={18} /> : <Copy01Icon size={18} />}
+      </IconButton>
+    </Tooltip>
   );
 }

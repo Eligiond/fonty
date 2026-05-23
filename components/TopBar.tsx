@@ -126,7 +126,12 @@ export default function TopBar({
             active={visualizeOpen}
             onClick={onVisualize}
             aria-label="Visualize fonts"
-            icon={<GeometricShapes01Icon size={18} />}
+            icon={
+              <GeometricShapes01Icon
+                size={18}
+                className={`transition-transform duration-300 ease-[cubic-bezier(0.23,1,0.32,1)] group-hover:rotate-12 ${visualizeOpen ? "rotate-12" : ""}`}
+              />
+            }
           />
         </Tooltip>
 

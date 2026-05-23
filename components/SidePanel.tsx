@@ -137,7 +137,7 @@ export default function SidePanel({
   return (
     <aside
       aria-hidden={!open}
-      className={`hidden flex-shrink-0 lg:flex flex-col overflow-hidden border-l ${resizing ? "" : "transition-[width] duration-300 cubic-bezier(0.23, 1, 0.32, 1)"}`}
+      className={`hidden flex-shrink-0 lg:flex flex-col overflow-hidden border-l ${resizing ? "" : "transition-[width] duration-[350ms] ease-[cubic-bezier(0.23,1,0.32,1)]"}`}
       style={{
         width: open ? width : RAIL_WIDTH,
         color: "var(--text)",
